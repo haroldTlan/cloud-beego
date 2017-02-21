@@ -1,8 +1,9 @@
 package controllers
 
 import (
+	"beego_info/models"
 	"encoding/json"
-	//	"fmt"
+	"fmt"
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -22,6 +23,8 @@ type Event struct {
 }
 
 func (this *WebSocketController) Join() {
+	defer Leave("haha")
+
 	// Upgrade from http request to WebSocket.
 	ws, err := websocket.Upgrade(this.Ctx.ResponseWriter, this.Ctx.Request, nil, 1024, 1024)
 	if _, ok := err.(websocket.HandshakeError); ok {
@@ -32,8 +35,24 @@ func (this *WebSocketController) Join() {
 		return
 	}
 	// handle ansible data
-	Join("haha", ws)
-	defer Leave("haha")
+	//Push(ws)
+	//Join("haha", ws)
+	go func() {
+		sub := models.StatTopic.Subscribe()
+		defer models.StatTopic.Unsubscribe(sub)
+		for {
+			e := <-sub
+			fmt.Println(e)
+			bytes, err := json.Marshal(e)
+			if err != nil {
+				continue
+			}
+			err = ws.WriteMessage(websocket.TextMessage, bytes)
+			if err != nil {
+				return
+			}
+		}
+	}()
 
 }
 

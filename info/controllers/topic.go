@@ -14,10 +14,14 @@ var (
 	// Channel for exit users.
 	unsubscribe = make(chan string, 10)
 	// Send events here to Publish them.
-	Publish = make(chan Event, 10)
+	Publish = make(chan interface{}, 10)
 	// Map of subscribers.
 	subscribers = make(map[string]*websocket.Conn)
 )
+
+func Push(d interface{}) {
+	Publish <- d
+}
 
 func Join(user string, ws *websocket.Conn) {
 	a, b := beego.AppConfig.Int("ansible")
@@ -47,6 +51,9 @@ type Subscriber struct {
 func statTopic() {
 	for {
 		select {
+		case data := <-Publish:
+			fmt.Println(data)
+
 		case sub := <-subscribe:
 			fmt.Println("sub")
 			fmt.Println(sub)
