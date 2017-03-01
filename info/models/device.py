@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-sys.path.append('/root/code')
+#sys.path.append('/root/code')
 from o import *
 
 import json

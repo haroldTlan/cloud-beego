@@ -2,28 +2,36 @@ package models
 
 import (
 	"encoding/json"
+	_ "fmt"
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
 var StatTopic = New() //set topic
 
-//get data from local
+func init() {
+	Ansible()
+	//InfoStat()
+}
+
+//get statistics from local
 func InfoStat() {
 	go func() {
 		for {
 			interval, err := beego.AppConfig.Int("interval")
 			if err != nil {
-				beego.Error(err)
+				AddLog(err)
 			}
-			str := readConf("/root/go/src/beego_info/static/static")
+			str := readConf("static/static")
 			static := make([]Results, 0)
 			if err := json.Unmarshal([]byte(str), &static); err != nil {
-				beego.Error(err)
+				AddLog(err)
 			}
 
 			var s Statistics
@@ -31,32 +39,36 @@ func InfoStat() {
 			s.Storages = make([]Device, 0)
 
 			for _, val := range static {
-				var dev Device
-				info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
+				if len(val.Result) > 0 {
+					var dev Device
+					info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
 
-				dev.Info = append(dev.Info, info)
-				dev.Ip = val.Ip
-				if val.Type == "storeInfo" {
-					s.Storages = append(s.Storages, dev)
-				} else {
-					s.Exports = append(s.Exports, dev)
+					dev.Info = append(dev.Info, info)
+					dev.Ip = val.Ip
+					if val.Type == "storeInfo" {
+						s.Storages = append(s.Storages, dev)
+					} else {
+						s.Exports = append(s.Exports, dev)
+					}
 				}
 			}
 			StatTopic.Publish(s)
+			s.CheckStand()
 			time.Sleep(time.Duration(interval) * time.Second)
 		}
 	}()
 }
 
+//Running ansible to get Statistics
 func Ansible() {
 	go func() {
 		for {
 			ansibleFrequency, err := beego.AppConfig.Int("ansible")
 			if err != nil {
-				beego.Error(err)
+				AddLog(err)
 			}
 			if _, err := exec.Command("python", "models/device.py").Output(); err != nil {
-				beego.Error(err)
+				AddLog(err)
 			}
 			time.Sleep(time.Duration(ansibleFrequency) * time.Second)
 		}
@@ -66,8 +78,12 @@ func Ansible() {
 //set some value from KB to MB or ...
 func microAdjust(devInfo *StoreView) StoreView {
 	for i, _ := range devInfo.Dfs {
-		devInfo.Dfs[i].Total = Round(devInfo.Dfs[i].Total/1024.0/1024.0, 2)
-		devInfo.Dfs[i].Available = Round(devInfo.Dfs[i].Available/1024.0/1024.0, 2)
+		if devInfo.Dfs[i].Name == "weed_mem" || devInfo.Dfs[i].Name == "weed_cpu" {
+			continue
+		} else {
+			devInfo.Dfs[i].Total = Round(devInfo.Dfs[i].Total/1024.0/1024.0, 2)
+			devInfo.Dfs[i].Available = Round(devInfo.Dfs[i].Available/1024.0/1024.0, 2)
+		}
 	}
 
 	return *devInfo
@@ -84,13 +100,20 @@ func Round(f float64, n int) float64 {
 func readConf(path string) string {
 	fi, err := os.Open(path)
 	if err != nil {
-		beego.Error(err)
+		panic(err)
+		AddLog(err)
 	}
 	defer fi.Close()
 	fd, err := ioutil.ReadAll(fi)
 	if err != nil {
-		beego.Error(err)
+		AddLog(err)
 	}
 
 	return string(fd)
+}
+
+//logs
+func AddLog(err error, v ...interface{}) {
+	pc, _, line, _ := runtime.Caller(1)
+	logs.Error("[Info] ", runtime.FuncForPC(pc).Name(), line, v, err)
 }
