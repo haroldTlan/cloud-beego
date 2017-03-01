@@ -1,9 +1,7 @@
 package models
 
 import (
-	"cloud"
 	"fmt"
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"strconv"
 )
@@ -61,10 +59,11 @@ func (s *Statistics) CheckStand() {
 
 func Check(s *StoreView, ip string) {
 	o := orm.NewOrm()
+	count := 2
 	//cpu
 	if exist := o.QueryTable("threshhold").Filter("type", "cpu").Filter("warning__gt", s.Cpu).Exist(); !exist {
 		m[ip]["cpu"] += 1
-		if m[ip]["cpu"] == 5 {
+		if m[ip]["cpu"] == count {
 			publish(ip, "cpu", s.Cpu)
 		}
 	} else {
@@ -73,7 +72,7 @@ func Check(s *StoreView, ip string) {
 	//mem
 	if exist := o.QueryTable("threshhold").Filter("type", "mem").Filter("warning__gt", s.Mem).Exist(); !exist {
 		m[ip]["mem"] += 1
-		if m[ip]["mem"] == 5 {
+		if m[ip]["mem"] == count {
 			publish(ip, "mem", s.Mem)
 		}
 	} else {
@@ -82,7 +81,7 @@ func Check(s *StoreView, ip string) {
 	//cache raid 1
 	if exist := o.QueryTable("threshhold").Filter("type", "cache").Filter("warning__gt", s.CacheU).Exist(); !exist {
 		m[ip]["cache"] += 1
-		if m[ip]["cache"] == 5 {
+		if m[ip]["cache"] == count {
 			publish(ip, "cache", s.CacheU)
 		}
 	} else {
@@ -94,7 +93,7 @@ func Check(s *StoreView, ip string) {
 			//system's cap
 			if exist := o.QueryTable("threshhold").Filter("type", "systemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["sysCap"] += 1
-				if m[ip]["sysCap"] == 5 {
+				if m[ip]["sysCap"] == count {
 					publish(ip, "sysCap", df.Used_per)
 				}
 			} else {
@@ -104,7 +103,7 @@ func Check(s *StoreView, ip string) {
 			//filesystem's cap
 			if exist := o.QueryTable("threshhold").Filter("type", "filesystemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["filesystemCap"] += 1
-				if m[ip]["filesystemCap"] == 5 {
+				if m[ip]["filesystemCap"] == count {
 					publish(ip, "filesystemCap", df.Used_per)
 				}
 			} else {
@@ -116,7 +115,7 @@ func Check(s *StoreView, ip string) {
 		} else if df.Name == "docker" {
 			if exist := o.QueryTable("threshhold").Filter("type", "dockerCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["dockerCap"] += 1
-				if m[ip]["dockerCap"] == 5 {
+				if m[ip]["dockerCap"] == count {
 					publish(ip, "dockerCap", df.Used_per)
 				}
 			} else {
@@ -126,7 +125,7 @@ func Check(s *StoreView, ip string) {
 		} else if df.Name == "tmp" {
 			if exist := o.QueryTable("threshhold").Filter("type", "tmpCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["tmpCap"] += 1
-				if m[ip]["tmpCap"] == 5 {
+				if m[ip]["tmpCap"] == count {
 					publish(ip, "tmpCap", df.Used_per)
 				}
 			} else {
@@ -136,7 +135,7 @@ func Check(s *StoreView, ip string) {
 		} else if df.Name == "var" {
 			if exist := o.QueryTable("threshhold").Filter("type", "varCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["varCap"] += 1
-				if m[ip]["varCap"] == 5 {
+				if m[ip]["varCap"] == count {
 					publish(ip, "varCap", df.Used_per)
 				}
 			} else {
@@ -146,7 +145,7 @@ func Check(s *StoreView, ip string) {
 		} else if df.Name == "weed_mem" {
 			if exist := o.QueryTable("threshhold").Filter("type", "weedMem").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["weedMem"] += 1
-				if m[ip]["weedMem"] == 5 {
+				if m[ip]["weedMem"] == count {
 					publish(ip, "weedMem", df.Used_per)
 				}
 			} else {
@@ -156,7 +155,7 @@ func Check(s *StoreView, ip string) {
 		} else if df.Name == "weed_cpu" {
 			if exist := o.QueryTable("threshhold").Filter("type", "weedCpu").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["weedCpu"] += 1
-				if m[ip]["weedCpu"] == 5 {
+				if m[ip]["weedCpu"] == count {
 					publish(ip, "weedCpu", df.Used_per)
 				}
 			} else {
@@ -190,10 +189,10 @@ func publish(ip, typeVal string, val float64) {
 	} else if typeVal == "weedCpu" {
 		message = "minio_weed CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
 	}
-	mail(ip, message)
+	mail(ip + " " + message)
 }
 
-func mail(name, message string) {
+func mail(message string) {
 	o := orm.NewOrm()
 	var adds []Mail
 	mails := make([]string, 0)
@@ -203,7 +202,6 @@ func mail(name, message string) {
 	for _, val := range adds {
 		mails = append(mails, val.Address)
 	}
-	header := beego.AppConfig.String("mailHeader")
-	fmt.Println(header)
-	cloud.Sendto(mails, name+" "+message, header)
+	MailSending(mails, message)
+	fmt.Println(message)
 }

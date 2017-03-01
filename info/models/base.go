@@ -113,7 +113,11 @@ func readConf(path string) string {
 }
 
 //logs
-func AddLog(err error, v ...interface{}) {
-	pc, _, line, _ := runtime.Caller(1)
-	logs.Error("[Info] ", runtime.FuncForPC(pc).Name(), line, v, err)
+func AddLog(err interface{}, v ...interface{}) {
+	if _, ok := err.(error); ok {
+		pc, _, line, _ := runtime.Caller(1)
+		logs.Error("[Info] ", runtime.FuncForPC(pc).Name(), line, v, err)
+	} else {
+		logs.Info("[Info] ", err)
+	}
 }
