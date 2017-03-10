@@ -59,7 +59,7 @@ func (s *Statistics) CheckStand() {
 
 func Check(s *StoreView, ip string) {
 	o := orm.NewOrm()
-	count := 2
+	count := 5
 	//cpu
 	if exist := o.QueryTable("threshhold").Filter("type", "cpu").Filter("warning__gt", s.Cpu).Exist(); !exist {
 		m[ip]["cpu"] += 1
@@ -79,10 +79,10 @@ func Check(s *StoreView, ip string) {
 		m[ip]["mem"] = 0
 	}
 	//cache raid 1
-	if exist := o.QueryTable("threshhold").Filter("type", "cache").Filter("warning__gt", s.CacheU).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", "cache").Filter("warning__gt", s.CacheU/s.CacheT).Exist(); !exist {
 		m[ip]["cache"] += 1
 		if m[ip]["cache"] == count {
-			publish(ip, "cache", s.CacheU)
+			publish(ip, "cache", s.CacheU/s.CacheT)
 		}
 	} else {
 		m[ip]["cache"] = 0
@@ -169,25 +169,25 @@ func Check(s *StoreView, ip string) {
 func publish(ip, typeVal string, val float64) {
 	var message string
 	if typeVal == "cpu" {
-		message = "CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "mem" {
-		message = "内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "cache" {
-		message = "阵列缓存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "阵列缓存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "sysCap" {
-		message = "系统盘容量超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "系统盘容量超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "filesystemCap" {
-		message = "文件系统容量超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "文件系统容量超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "dockerCap" {
-		message = "docker文件夹超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "docker文件夹超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "tmpCap" {
-		message = "tmp文件夹超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "tmp文件夹超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "varCap" {
-		message = "日志区var超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "日志区var超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "weedMem" {
-		message = "minio_weed内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "minio内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "weedCpu" {
-		message = "minio_weed CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64)
+		message = "minio CPU超过阈值：" + strconv.FormatFloat(val*8, 'f', 1, 64) + "%/800%"
 	}
 	mail(ip + " " + message)
 }

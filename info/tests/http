@@ -1,0 +1,39 @@
+func DateHttpRequest(url, query string) (body string) {
+        var jsonStr = []byte(query)
+        req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+        req.Header.Set("Content-Type", "application/json")
+
+        client := &http.Client{}
+        resp, err := client.Do(req)
+        if err != nil {
+                panic(err)
+        }
+        defer resp.Body.Close()
+
+        bodys, err := ioutil.ReadAll(resp.Body)
+        if err != nil {
+                panic(err)
+        }
+        body = string(bodys)
+
+        var d Detail
+        if err := json.Unmarshal(bodys, &d); err != nil {
+                panic(err)
+        }
+
+        return
+}
+
+
+func DateHttpRequest(query map[string]string) string {
+        req := httplib.Post("http://192.168.2.122:8000/gender")
+        req.Header("Content-Type", "application/json")
+        req.JSONBody(query)
+
+        outs, err := req.Bytes()
+        if err != nil {
+                fmt.Println("post error: ", err)
+        }
+
+        return string(outs)
+}

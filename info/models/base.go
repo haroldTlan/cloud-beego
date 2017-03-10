@@ -15,11 +15,6 @@ import (
 
 var StatTopic = New() //set topic
 
-func init() {
-	Ansible()
-	//InfoStat()
-}
-
 //get statistics from local
 func InfoStat() {
 	go func() {
@@ -32,6 +27,7 @@ func InfoStat() {
 			static := make([]Results, 0)
 			if err := json.Unmarshal([]byte(str), &static); err != nil {
 				AddLog(err)
+				return
 			}
 
 			var s Statistics
@@ -42,7 +38,6 @@ func InfoStat() {
 				if len(val.Result) > 0 {
 					var dev Device
 					info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
-
 					dev.Info = append(dev.Info, info)
 					dev.Ip = val.Ip
 					if val.Type == "storeInfo" {
@@ -77,6 +72,8 @@ func Ansible() {
 
 //set some value from KB to MB or ...
 func microAdjust(devInfo *StoreView) StoreView {
+	devInfo.W_Vol = Round(devInfo.W_Vol/1024, 2)
+	devInfo.R_Vol = Round(devInfo.R_Vol/1024, 2)
 	for i, _ := range devInfo.Dfs {
 		if devInfo.Dfs[i].Name == "weed_mem" || devInfo.Dfs[i].Name == "weed_cpu" {
 			continue
@@ -85,14 +82,12 @@ func microAdjust(devInfo *StoreView) StoreView {
 			devInfo.Dfs[i].Available = Round(devInfo.Dfs[i].Available/1024.0/1024.0, 2)
 		}
 	}
-
 	return *devInfo
 }
 
 //keep the places of decimal you want
 func Round(f float64, n int) float64 {
 	pow10_n := math.Pow10(n)
-
 	return math.Trunc((f+0.5/pow10_n)*pow10_n) / pow10_n
 }
 
