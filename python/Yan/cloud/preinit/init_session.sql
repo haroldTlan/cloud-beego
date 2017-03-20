@@ -1,7 +1,0 @@
-USE speediodb;
-DROP TABLE IF EXISTS sessions;
-CREATE TABLE sessions (
-    session_id char(128) UNIQUE NOT NULL,
-    atime timestamp NOT NULL default current_timestamp,
-    data text
-);

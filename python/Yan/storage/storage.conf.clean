@@ -1,0 +1,11 @@
+export-hosts = "";
+crc32c_check = true;
+crc32c_generate = true;
+crc32c_hw_forced = true;
+listen = ( 
+	{
+		addr = "*";
+		port = 41001;
+	} );
+storages = ( 
+	 );
