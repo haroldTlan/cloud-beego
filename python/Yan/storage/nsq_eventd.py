@@ -267,7 +267,7 @@ class KernelEventSub(mq.IOHandler):
 class EventDaemon(Daemon):
     def init(self):
         self.poller = mq.Poller()
-        conn = gnsq.Nsqd(address=config.rozofs.ip, http_port=4151)
+        conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=4151)
         pub = mq.pub_socket('eventd')
         self.ksub = KernelEventSub(pub)
         self.usub = UserspaceEventSub(pub)

@@ -72,16 +72,6 @@ class Realtime(object):
         self._cache_ubytes = 0
         self._ifaces = [dict(name="eth0"), dict(name="eth1")]
 #        self._ifaces = network.ifaces().values()
-	self._tmp_total = 0
-	self._tmp_used = 0
-	self._tmp_used_per = 0
-        self._vol_rbytes = 0
-        self._vol_wbytes = 0
-	self._df = []
-
-	#Yan
-        self._weed_cpu = 0
-        self._weed_mem = 0      
 
     def _flow(self, path, prev):
         try:
@@ -142,18 +132,13 @@ class Realtime(object):
             rsum, wsum = 0, 0
             r, w = 0, 0
             df = os.popen("iostat")
-            line = df.readlines()[-2]
-            rsum = int(line.split()[-2])
-            wsum = int(line.split()[-1])
+            lines = df.readlines()
+            for i in lines:
+                if 'md' in i:
+                    rsum += float(i.split()[-4])
+                    wsum += float(i.split()[-3])
 
-            interval = time.time() - self._timestamp
-            if self._vol_rbytes <> 0:
-                r = rsum - self._vol_rbytes
-            if self._vol_wbytes <> 0:
-                w = wsum - self._vol_wbytes
-            self._vol_rbytes = rsum
-            self._vol_wbytes = wsum
-            return self._format_nr(r/interval/1024), self._format_nr(w/interval/1024)
+            return self._format_nr(rsum), self._format_nr(wsum)
         except:
             return 0,0
 
@@ -209,6 +194,7 @@ class Realtime(object):
 
     def _stat_weed_cpu(self):
    	total = 100.0
+        weed_cpu_used = 0.0
         name = 'weed_cpu'
         _used_per = psutil.cpu_percent(0)
 	available = total - _used_per
@@ -216,10 +202,10 @@ class Realtime(object):
             cpu = commands.getoutput("top -b -n 1 | grep 'weed'")
 	    if len(cpu) >0:
                 for line in cpu.split('\n'):
-        	    self._weed_cpu += float(line.split()[8])/8
+        	    weed_cpu_used += float(line.split()[8])/8
 	except Exception as e:
             print e
-	return dict(name=name, total=total, available=available, used_per=self._weed_cpu)
+	return dict(name=name, total=total, available=available, used_per=weed_cpu_used)
 
     def _stat_weed_mem(self):
         name = 'weed_mem'
@@ -231,10 +217,9 @@ class Realtime(object):
             weed = commands.getoutput("top -b -n 1 | grep 'weed'")
 	    if len(weed) >0:
                 for line in weed.split('\n'):
-        	    self._weed_cpu += float(line.split()[8])/8
-                    mem += self._weed_mem(line.split()[5])
                     used_per += float(line.split()[9])
-        except:
+        except Exception as e:
+            print e
 	    used_per = 0
 
         return dict(name=name, total=total, available=available, used_per=used_per)
@@ -289,7 +274,7 @@ class Realtime(object):
         vm = psutil.virtual_memory()
         temp = self._stat_temp()
 
-        mem = vm.precent
+        mem = vm.percent
         mem_total = vm.total
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
@@ -319,8 +304,8 @@ class Realtime(object):
                   'df':df,
 		  'cache_total': rd_t,
 		  'cache_used': rd_u,
-                  'read_vol': rvol,
-                  'write_vol': wvol
+                  'read_vol': rvol,	#KB/s
+                  'write_vol': wvol	#KB/s
                   }
         self._samples.append(sample)
 
