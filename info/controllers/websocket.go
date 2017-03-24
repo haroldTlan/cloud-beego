@@ -27,6 +27,7 @@ func (this *WebSocketController) Join() {
 
 	go func() {
 		// handle ansible data
+		models.AddLog("Logining")
 		sub := models.StatTopic.Subscribe()
 		defer models.StatTopic.Unsubscribe(sub)
 		for {

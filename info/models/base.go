@@ -35,15 +35,18 @@ func InfoStat() {
 			s.Storages = make([]Device, 0)
 
 			for _, val := range static {
-				if len(val.Result) > 0 {
-					var dev Device
-					info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
-					dev.Info = append(dev.Info, info)
-					dev.Ip = val.Ip
-					if val.Type == "storeInfo" {
-						s.Storages = append(s.Storages, dev)
-					} else {
-						s.Exports = append(s.Exports, dev)
+				if val.Status == "success" {
+					if len(val.Result) > 0 {
+						var dev Device
+						info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
+						dev.Info = append(dev.Info, info)
+						dev.Ip = val.Ip
+						if val.Type == "storeInfo" {
+							s.Storages = append(s.Storages, dev)
+
+						} else {
+							s.Exports = append(s.Exports, dev)
+						}
 					}
 				}
 			}
