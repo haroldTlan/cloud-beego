@@ -85,18 +85,24 @@ class UEventSub(mq.Subscriber, mq.IOHandler):
             except:
                 pass
 
+    def get_ip_address(self):
+        INTERFACE = ['eth0','br0','eth1','br1']
+        ifaces = network.ifaces().values()
+        for i in INTERFACE:
+            for j in ifaces:
+                if j.name == i and j.link:
+                    return j.ipaddr
+
     def send_json(self, o):
         o['event'] = o['uevent']
         del o['uevent']
-        iface = [info.ipaddr for info in network.ifaces().values() if info.link][0]
-        o['ip'] = iface
+        o['ip'] = self.get_ip_address
         result = json.dumps(o)
         self.conn.publish('CloudEvent', str(result))
         print 'send json: %s' % result
 
     def send_nsq(self, o):
-        iface = [info.ipaddr for info in network.ifaces().values() if info.link][0]
-        o['ip'] = iface
+        o['ip'] = self.get_ip_address
         result = json.dumps(o)
         self.conn.publish('CloudEvent', str(result))
 
@@ -267,7 +273,7 @@ class KernelEventSub(mq.IOHandler):
 class EventDaemon(Daemon):
     def init(self):
         self.poller = mq.Poller()
-        conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=4151)
+        conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.publish_port)
         pub = mq.pub_socket('eventd')
         self.ksub = KernelEventSub(pub)
         self.usub = UserspaceEventSub(pub)

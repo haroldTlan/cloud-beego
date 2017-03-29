@@ -20,16 +20,19 @@ from caused import ignore_exc
 from util import execute
 import mq
 import psutil
-#import network
+import gnsq
+import network
 
 import commands
+import struct
 
-__version__ = 'v1.0.0'
+__version__ = 'v2.0.0'
 
 class Response(mq.IOHandler):
-    def __init__(self):
+    def __init__(self,conn):
         self._sock = mq.rsp_socket('speedd')
         self._realtime = Realtime()
+	self.conn = conn
 
     @property
     def fd(self):
@@ -37,7 +40,11 @@ class Response(mq.IOHandler):
 
     def stat(self):
         self._realtime.stat()
-	os.system("echo '%s'> /home/monitor/statistics"%json.dumps(list(self._realtime)[-5:]))
+        try:
+            self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
+	except Exception as e:
+	    print e
+	#os.system("echo '%s'> /home/monitor/statistics"%json.dumps(list(self._realtime)[-5:]))
 
     def handle_statistics(self, kv):
         if 'time' not in kv:
@@ -70,8 +77,9 @@ class Realtime(object):
         self._network_wbytes = 0
         self._cache_tbytes = 0
         self._cache_ubytes = 0
-        self._ifaces = [dict(name="eth0"), dict(name="eth1")]
-#        self._ifaces = network.ifaces().values()
+	self._vol_rbytes = 0
+        self._vol_wbytes = 0
+        self._ifaces = network.ifaces().values()
 
     def _flow(self, path, prev):
         try:
@@ -110,11 +118,11 @@ class Realtime(object):
             rsum, wsum = 0, 0
             r, w = 0, 0
             for iface in self._ifaces:
-                if 'bond' in iface['name']:
+                if 'bond' or 'br' in iface.name:
                     continue 
-                rpath = '/sys/class/net/%s/statistics/tx_bytes' % iface['name']
+                rpath = '/sys/class/net/%s/statistics/tx_bytes' % iface.name
                 rsum += float(open(rpath).read())
-                wpath = '/sys/class/net/%s/statistics/rx_bytes' % iface['name']
+                wpath = '/sys/class/net/%s/statistics/rx_bytes' % iface.name
                 wsum += float(open(wpath).read())
             interval = time.time() - self._timestamp
             if self._network_rbytes <> 0:
@@ -124,10 +132,35 @@ class Realtime(object):
             self._network_rbytes = rsum
             self._network_wbytes = wsum
             return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
-        except:
+        except Exception as e:
+            print e
             return 0,0
 
     def _stat_devices_flow(self):
+        try:
+            rsum, wsum = 0, 0
+            r, w = 0, 0
+            df = os.popen("iostat")
+            lines = df.readlines()
+	    interval = time.time() - self._timestamp
+
+            for line in lines:
+                if 'md' in line:
+		    rsum += int(line.split()[-2])
+	            wsum += int(line.split()[-1])
+	            if self._vol_rbytes <> 0:
+	                r = rsum - self._vol_rbytes
+	            if self._vol_wbytes <> 0:
+	                w = wsum - self._vol_wbytes
+	    self._vol_rbytes = rsum
+	    self._vol_wbytes = wsum
+	    
+            return self._format_nr(r/interval/1024), self._format_nr(w/interval/1024)
+        except Exception as e:
+            print e
+            return 0,0
+
+    ''''def _stat_devices_flow(self):
         try:
             rsum, wsum = 0, 0
             r, w = 0, 0
@@ -138,9 +171,10 @@ class Realtime(object):
                     rsum += float(i.split()[-4])
                     wsum += float(i.split()[-3])
 
-            return self._format_nr(rsum), self._format_nr(wsum)
-        except:
-            return 0,0
+            return self._format_nr(rsum/1024), self._format_nr(wsum/1024)
+        except Exception as e:
+            print e
+            return 0,0'''
 
     def _stat_cache(self):
         try:
@@ -149,7 +183,7 @@ class Realtime(object):
             upath = '/sys/fs/rdcache/cache-!dev!md0/blk_used_nr'
             self._cache_ubytes = float(open(upath).read())
             return self._cache_tbytes,self._cache_ubytes
-        except:
+        except Exception as e:
             return 0,0
 
     def _format_nr(self, nr):
@@ -253,6 +287,14 @@ class Realtime(object):
         except:
             return 0,0
 
+    def get_ip_address(self):
+	INTERFACE = ['eth0','br0','eth1','br1']
+	ifaces = network.ifaces().values()
+        for i in INTERFACE:
+            for j in ifaces:
+		if j.name == i and j.link:
+	  	    return j.ipaddr
+
     def _dev(self):
         try:
           r,w = 0,0
@@ -268,6 +310,7 @@ class Realtime(object):
             return 0,0
 
     def stat(self):
+        iface = ""
         if time.time() - self._timestamp < 1.0:
             return
         cpu = psutil.cpu_percent(0)
@@ -284,13 +327,18 @@ class Realtime(object):
 	df = self._stat_df()
 	rd_t,rd_u = self._stat_cache()
         self._timestamp = time.time()
+	iface = self.get_ip_address()
 
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
 
+	
+        
         timestamp = self._format_nr(self._timestamp)
-        sample = {'cpu' : cpu,
+        sample = {'ip' : iface,
+		  'dev' : 'storage',
+		  'cpu' : cpu,
                   'mem' : mem,
                   'mem_total' : mem_total,
                   'temp': temp,
@@ -298,15 +346,16 @@ class Realtime(object):
                   #'write_mb': w,
                   #'fread_mb': fr,
                   #'fwrite_mb': fw,
-                  'read_mb': nr, 	#nread
-                  'write_mb': nw,
+                  'read_mb': nr, 	#nread MB/s
+                  'write_mb': nw,       #      MB/s
                   'timestamp': timestamp,
-                  'df':df,
+                  'df':df,              #KB
 		  'cache_total': rd_t,
 		  'cache_used': rd_u,
-                  'read_vol': rvol,	#KB/s
-                  'write_vol': wvol	#KB/s
+                  'read_vol': rvol,	#MB/s
+                  'write_vol': wvol	#MB/s
                   }
+        print sample
         self._samples.append(sample)
 
     def __iter__(self):
@@ -320,8 +369,10 @@ class Realtime(object):
 
 class SpeedioDaemon(Daemon):
     def init(self):
+
         self._poller = mq.Poller()
-        self._rsp = Response()
+	conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.publish_port)
+        self._rsp = Response(conn)
         self._poller.register(self._rsp)
 
     def _run(self):
