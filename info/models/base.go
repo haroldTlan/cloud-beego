@@ -4,17 +4,14 @@ import (
 	_ "fmt"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
-	"io/ioutil"
 	"math"
-	"os"
-	"os/exec"
 	"runtime"
 	"time"
 )
 
 var StatTopic = New() //set topic
 
-//get statistics from local
+//get infos from nsq
 func InfoStat() {
 	go func() {
 		for {
@@ -37,26 +34,9 @@ func InfoStat() {
 					s.Exports = append(s.Exports, dev)
 				}
 			}
-			//fmt.Printf("%+v", s)
 			StatTopic.Publish(s)
 			s.CheckStand()
 			time.Sleep(time.Duration(interval) * time.Second)
-		}
-	}()
-}
-
-//Running ansible to get Statistics
-func Ansible() {
-	go func() {
-		for {
-			ansibleFrequency, err := beego.AppConfig.Int("ansible")
-			if err != nil {
-				AddLog(err)
-			}
-			if _, err := exec.Command("python", "models/device.py").Output(); err != nil {
-				AddLog(err)
-			}
-			time.Sleep(time.Duration(ansibleFrequency) * time.Second)
 		}
 	}()
 }
@@ -80,22 +60,6 @@ func microAdjust(devInfo *StoreView) StoreView {
 func Round(f float64, n int) float64 {
 	pow10_n := math.Pow10(n)
 	return math.Trunc((f+0.5/pow10_n)*pow10_n) / pow10_n
-}
-
-//read static
-func readConf(path string) string {
-	fi, err := os.Open(path)
-	if err != nil {
-		panic(err)
-		AddLog(err)
-	}
-	defer fi.Close()
-	fd, err := ioutil.ReadAll(fi)
-	if err != nil {
-		AddLog(err)
-	}
-
-	return string(fd)
 }
 
 //logs

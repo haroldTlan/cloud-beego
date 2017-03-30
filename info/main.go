@@ -27,7 +27,6 @@ func init() {
 func main() {
 	flag.Parse()
 	//Must init first
-	models.Ansible()
 	models.InfoStat()
 
 	go models.RunConsumer(*maxInFlight, *nsqdAddr)
