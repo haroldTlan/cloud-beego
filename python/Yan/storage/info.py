@@ -313,10 +313,11 @@ class Realtime(object):
         iface = ""
         if time.time() - self._timestamp < 1.0:
             return
+        self._timestamp = time.time()
+
         cpu = psutil.cpu_percent(0)
         vm = psutil.virtual_memory()
         temp = self._stat_temp()
-
         mem = vm.percent
         mem_total = vm.total
         r, w = self._stat_flow()
@@ -326,13 +327,11 @@ class Realtime(object):
         rvol,wvol = self._stat_devices_flow()
 	df = self._stat_df()
 	rd_t,rd_u = self._stat_cache()
-        self._timestamp = time.time()
 	iface = self.get_ip_address()
 
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
-
 	
         
         timestamp = self._format_nr(self._timestamp)
@@ -369,7 +368,6 @@ class Realtime(object):
 
 class SpeedioDaemon(Daemon):
     def init(self):
-
         self._poller = mq.Poller()
 	conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.publish_port)
         self._rsp = Response(conn)

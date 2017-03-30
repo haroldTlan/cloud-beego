@@ -96,14 +96,16 @@ class UEventSub(mq.Subscriber, mq.IOHandler):
     def send_json(self, o):
         o['event'] = o['uevent']
         del o['uevent']
-        o['ip'] = self.get_ip_address
+        o['ip'] = self.get_ip_address()
         result = json.dumps(o)
-        self.conn.publish('CloudEvent', str(result))
         print 'send json: %s' % result
+        self.conn.publish('CloudEvent', str(result))
+
 
     def send_nsq(self, o):
-        o['ip'] = self.get_ip_address
+        o['ip'] = self.get_ip_address()
         result = json.dumps(o)
+        print 'send json: %s' % result
         self.conn.publish('CloudEvent', str(result))
 
     def _raid_rebuild(self, o):
@@ -162,6 +164,7 @@ class UEventSub(mq.Subscriber, mq.IOHandler):
                         e = {'event': 'raid.rebuild', 'raid':raid.uuid, 'health':raid.health, 'rebuilding': raid.rebuilding, 'rebuild_progress': raid.rebuild_progress}
                         self.pub.send_json(e)
                         self.watched_raids[u] = (raid, raid.rebuild_progress)
+			print e
                         self.send_nsq(e)
                         print e
 
@@ -273,7 +276,7 @@ class KernelEventSub(mq.IOHandler):
 class EventDaemon(Daemon):
     def init(self):
         self.poller = mq.Poller()
-        conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.publish_port)
+        conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=4151)
         pub = mq.pub_socket('eventd')
         self.ksub = KernelEventSub(pub)
         self.usub = UserspaceEventSub(pub)
@@ -286,7 +289,7 @@ class EventDaemon(Daemon):
         print 'NSQ_eventd(%s) is running...' % os.getpid()
 
         while True:
-            self.poller.poll(config.eventd.poll_timeout_secs*1000)
+            self.poller.poll(config.nsq_eventd.poll_timeout_secs*1000)
             self.uevent.elapse()
 
 
