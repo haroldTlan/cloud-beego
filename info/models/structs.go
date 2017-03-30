@@ -18,9 +18,12 @@ type Device struct {
 }
 
 type StoreView struct {
+	Ip        string  `json:"ip"`
+	Dev       string  `json:"dev"`
 	Dfs       []Df    `json:"df"`
 	Cpu       float64 `json:"cpu"`
 	Mem       float64 `json:"mem"`
+	MemT      float64 `json:"mem_total"`
 	Temp      float64 `json:"temp"`
 	Write     float64 `json:"write_mb"`
 	Read      float64 `json:"read_mb"`

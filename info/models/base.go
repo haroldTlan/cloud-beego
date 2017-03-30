@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	_ "fmt"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
@@ -23,33 +22,22 @@ func InfoStat() {
 			if err != nil {
 				AddLog(err)
 			}
-			str := readConf("static/static")
-			static := make([]Results, 0)
-			if err := json.Unmarshal([]byte(str), &static); err != nil {
-				AddLog(err)
-				return
-			}
 
 			var s Statistics
 			s.Exports = make([]Device, 0)
 			s.Storages = make([]Device, 0)
+			for _, info := range infos {
+				var dev Device
+				dev.Info = append(dev.Info, info)
+				dev.Ip = info.Ip
+				if info.Dev == "storage" {
+					s.Storages = append(s.Storages, dev)
 
-			for _, val := range static {
-				if val.Status == "success" {
-					if len(val.Result) > 0 {
-						var dev Device
-						info := microAdjust(&val.Result[len(val.Result)-1]) //get the lastest one statistics
-						dev.Info = append(dev.Info, info)
-						dev.Ip = val.Ip
-						if val.Type == "storeInfo" {
-							s.Storages = append(s.Storages, dev)
-
-						} else {
-							s.Exports = append(s.Exports, dev)
-						}
-					}
+				} else {
+					s.Exports = append(s.Exports, dev)
 				}
 			}
+			//fmt.Printf("%+v", s)
 			StatTopic.Publish(s)
 			s.CheckStand()
 			time.Sleep(time.Duration(interval) * time.Second)

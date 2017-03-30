@@ -3,6 +3,7 @@ package controllers
 import (
 	"beego_info/models"
 	"encoding/json"
+	_ "fmt"
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -36,6 +37,7 @@ func (this *WebSocketController) Join() {
 			if err != nil {
 				models.AddLog(err)
 			}
+			//fmt.Println("2")
 			err = ws.WriteMessage(websocket.TextMessage, bytes)
 			if err != nil {
 				models.AddLog(err)
