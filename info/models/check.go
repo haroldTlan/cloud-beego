@@ -44,25 +44,25 @@ func (s *Statistics) CheckStand() {
 	if len(s.Exports) > 0 {
 		for _, export := range s.Exports {
 			if _, ok := m[export.Ip]; ok {
-				Check(&export.Info[0], export.Ip)
+				Check(&export.Info[0], export.Ip, "export")
 			}
 		}
 	}
 	if len(s.Storages) > 0 { //If machine exits
 		for _, storage := range s.Storages {
 			if _, ok := m[storage.Ip]; ok {
-				Check(&storage.Info[0], storage.Ip)
+				Check(&storage.Info[0], storage.Ip, "storage")
 			}
 		}
 	}
 
 }
 
-func Check(s *StoreView, ip string) {
+func Check(s *StoreView, ip, devtype string) {
 	o := orm.NewOrm()
 	count := 5
 	//cpu
-	if exist := o.QueryTable("threshhold").Filter("type", "cpu").Filter("warning__gt", s.Cpu).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cpu").Filter("warning__gt", s.Cpu).Exist(); !exist {
 		m[ip]["cpu"] += 1
 		if m[ip]["cpu"] == count {
 			publish(ip, "cpu", s.Cpu)
@@ -71,16 +71,16 @@ func Check(s *StoreView, ip string) {
 		m[ip]["cpu"] = 0
 	}
 	//mem
-	if exist := o.QueryTable("threshhold").Filter("type", "mem").Filter("warning__gt", s.Mem).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "mem").Filter("warning__gt", s.Mem).Exist(); !exist {
 		m[ip]["mem"] += 1
 		if m[ip]["mem"] == count {
-			publish(ip, "mem", s.Mem)
+			publish(ip, "mem", s.Mem, s.MemT)
 		}
 	} else {
 		m[ip]["mem"] = 0
 	}
 	//cache raid 1
-	if exist := o.QueryTable("threshhold").Filter("type", "cache").Filter("warning__gt", s.CacheU/s.CacheT).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cache").Filter("warning__gt", s.CacheU/s.CacheT).Exist(); !exist {
 		m[ip]["cache"] += 1
 		if m[ip]["cache"] == count {
 			publish(ip, "cache", s.CacheU/s.CacheT)
@@ -92,7 +92,7 @@ func Check(s *StoreView, ip string) {
 	for _, df := range s.Dfs {
 		if df.Name == "system" {
 			//system's cap
-			if exist := o.QueryTable("threshhold").Filter("type", "systemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "systemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["sysCap"] += 1
 				if m[ip]["sysCap"] == count {
 					publish(ip, "sysCap", df.Used_per)
@@ -102,7 +102,7 @@ func Check(s *StoreView, ip string) {
 			}
 		} else if df.Name == "filesystem" {
 			//filesystem's cap
-			if exist := o.QueryTable("threshhold").Filter("type", "filesystemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "filesystemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["filesystemCap"] += 1
 				if m[ip]["filesystemCap"] == count {
 					publish(ip, "filesystemCap", df.Used_per)
@@ -114,7 +114,7 @@ func Check(s *StoreView, ip string) {
 			//special for yan
 			//docker
 		} else if df.Name == "docker" {
-			if exist := o.QueryTable("threshhold").Filter("type", "dockerCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "dockerCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["dockerCap"] += 1
 				if m[ip]["dockerCap"] == count {
 					publish(ip, "dockerCap", df.Used_per)
@@ -124,7 +124,7 @@ func Check(s *StoreView, ip string) {
 			}
 			//tmp
 		} else if df.Name == "tmp" {
-			if exist := o.QueryTable("threshhold").Filter("type", "tmpCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "tmpCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["tmpCap"] += 1
 				if m[ip]["tmpCap"] == count {
 					publish(ip, "tmpCap", df.Used_per)
@@ -134,7 +134,7 @@ func Check(s *StoreView, ip string) {
 			}
 			//var for /var/log
 		} else if df.Name == "var" {
-			if exist := o.QueryTable("threshhold").Filter("type", "varCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "varCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["varCap"] += 1
 				if m[ip]["varCap"] == count {
 					publish(ip, "varCap", df.Used_per)
@@ -144,7 +144,7 @@ func Check(s *StoreView, ip string) {
 			}
 			// weed_mem
 		} else if df.Name == "weed_mem" {
-			if exist := o.QueryTable("threshhold").Filter("type", "weedMem").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedMem").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["weedMem"] += 1
 				if m[ip]["weedMem"] == count {
 					publish(ip, "weedMem", df.Used_per)
@@ -154,7 +154,7 @@ func Check(s *StoreView, ip string) {
 			}
 			// weed_cpu
 		} else if df.Name == "weed_cpu" {
-			if exist := o.QueryTable("threshhold").Filter("type", "weedCpu").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedCpu").Filter("warning__gt", df.Used_per).Exist(); !exist {
 				m[ip]["weedCpu"] += 1
 				if m[ip]["weedCpu"] == count {
 					publish(ip, "weedCpu", df.Used_per)
@@ -167,12 +167,14 @@ func Check(s *StoreView, ip string) {
 
 }
 
-func publish(ip, typeVal string, val float64) {
+func publish(ip, typeVal string, val float64, d ...float64) {
 	var message string
 	if typeVal == "cpu" {
 		message = "CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "mem" {
-		message = "内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
+		t := strconv.FormatFloat(d[0]/1024/1024/1024, 'f', 1, 64)
+		u := strconv.FormatFloat(d[0]/1024/1024/1024*val/100, 'f', 1, 64)
+		message = "内存超过阈值：" + u + "G/" + t + "G  " + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "cache" {
 		message = "阵列缓存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "sysCap" {

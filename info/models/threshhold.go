@@ -12,6 +12,7 @@ import (
 type Threshhold struct {
 	Id      int    `orm:"column(uid);auto"`
 	Type    string `orm:"column(type);size(64);null"`
+	Dev     string `orm:"column(dev);size(64);null"`
 	Warning int    `orm:"column(warning);null"`
 	Normal  int    `orm:"column(normal);null"`
 }

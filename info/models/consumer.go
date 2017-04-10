@@ -78,7 +78,7 @@ func ClearInfos() {
 	for {
 		o := orm.NewOrm()
 		for _, val := range infos {
-			exist := o.QueryTable(new(Machine)).Filter("status", 1).Filter("ip", val.Ip).Exist()
+			exist := o.QueryTable(new(Machine)).Filter("status", true).Filter("ip", val.Ip).Exist()
 			if !exist {
 				delete(infos, val.Ip)
 			}
