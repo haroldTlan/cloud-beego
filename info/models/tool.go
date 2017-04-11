@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"github.com/astaxie/beego"
 	"gopkg.in/gomail.v2"
 	"time"
@@ -39,7 +38,6 @@ func MailDaemon() {
 					return
 				}
 				if !open {
-					fmt.Printf("%+v", d)
 					if s, err = d.Dial(); err != nil {
 						AddLog(err)
 						for i := 0; i < 3; i++ {

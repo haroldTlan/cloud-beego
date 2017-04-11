@@ -12,22 +12,23 @@ import (
 )
 
 var (
-	infos map[string]StoreView
-	l     sync.RWMutex
+	NsqInfos map[string]StoreView //global variable
+	l        sync.RWMutex         //lock
 )
 
 func init() {
-	infos = make(map[string]StoreView)
+	NsqInfos = make(map[string]StoreView)
 }
 
+//Handle infos from nsq consumer
 func handle(msg *consumer.Message) {
-
 	data := make([]StoreView, 0)
 	if err := json.Unmarshal(msg.Body, &data); err != nil { //get infos from machines
 		AddLog(err)
 		msg.Fail()
 		return
 	}
+
 	if len(data) > 0 {
 		for _, val := range data {
 			err := selectMachines(val.Ip)
@@ -44,9 +45,10 @@ func handle(msg *consumer.Message) {
 	msg.Success() //TODO means
 }
 
+//Write infos in global varible
 func InfoTest(data *StoreView, ip string) {
 	l.RLock()
-	if _, ok := infos[ip]; ok {
+	if _, ok := NsqInfos[ip]; ok {
 		l.RUnlock()
 		l.Lock()
 		for i, _ := range data.Dfs {
@@ -57,14 +59,16 @@ func InfoTest(data *StoreView, ip string) {
 				data.Dfs[i].Available = Round(data.Dfs[i].Available/1024.0/1024.0, 2)
 			}
 		}
-		infos[ip] = *data
+		NsqInfos[ip] = *data
 		l.Unlock()
 	} else {
 		l.RUnlock()
-		infos[ip] = StoreView{Dev: data.Dev} //TODO init
+		NsqInfos[ip] = *data
+		//	NsqInfos[ip] = StoreView{Dev: data.Dev} //TODO init
 	}
 }
 
+//Select infos whether is being monitored
 func selectMachines(ip string) error {
 	o := orm.NewOrm()
 	exist := o.QueryTable(new(Machine)).Filter("status", 1).Filter("ip", ip).Exist()
@@ -74,20 +78,21 @@ func selectMachines(ip string) error {
 	return nil
 }
 
+//clear global when machine not being monitored
 func ClearInfos() {
 	for {
 		o := orm.NewOrm()
-		for _, val := range infos {
+		for _, val := range NsqInfos {
 			exist := o.QueryTable(new(Machine)).Filter("status", true).Filter("ip", val.Ip).Exist()
 			if !exist {
-				delete(infos, val.Ip)
+				delete(NsqInfos, val.Ip)
 			}
 		}
 		time.Sleep(time.Second * 10)
-
 	}
 }
 
+//connect consumer 10 times
 func RunConsumer(maxInFlight int, nsqdAddr string) {
 	count := 10
 	for {

@@ -62,7 +62,7 @@ func Check(s *StoreView, ip, devtype string) {
 	o := orm.NewOrm()
 	count := 5
 	//cpu
-	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cpu").Filter("warning__gt", s.Cpu).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cpu").Filter("warning__lt", s.Cpu).Exist(); exist {
 		m[ip]["cpu"] += 1
 		if m[ip]["cpu"] == count {
 			publish(ip, "cpu", s.Cpu)
@@ -71,7 +71,7 @@ func Check(s *StoreView, ip, devtype string) {
 		m[ip]["cpu"] = 0
 	}
 	//mem
-	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "mem").Filter("warning__gt", s.Mem).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "mem").Filter("warning__lt", s.Mem).Exist(); exist {
 		m[ip]["mem"] += 1
 		if m[ip]["mem"] == count {
 			publish(ip, "mem", s.Mem, s.MemT)
@@ -80,7 +80,7 @@ func Check(s *StoreView, ip, devtype string) {
 		m[ip]["mem"] = 0
 	}
 	//cache raid 1
-	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cache").Filter("warning__gt", s.CacheU/s.CacheT).Exist(); !exist {
+	if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "cache").Filter("warning__lt", s.CacheU/s.CacheT).Exist(); exist {
 		m[ip]["cache"] += 1
 		if m[ip]["cache"] == count {
 			publish(ip, "cache", s.CacheU/s.CacheT)
@@ -92,7 +92,7 @@ func Check(s *StoreView, ip, devtype string) {
 	for _, df := range s.Dfs {
 		if df.Name == "system" {
 			//system's cap
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "systemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "systemCap").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["sysCap"] += 1
 				if m[ip]["sysCap"] == count {
 					publish(ip, "sysCap", df.Used_per)
@@ -102,7 +102,7 @@ func Check(s *StoreView, ip, devtype string) {
 			}
 		} else if df.Name == "filesystem" {
 			//filesystem's cap
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "filesystemCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "filesystemCap").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["filesystemCap"] += 1
 				if m[ip]["filesystemCap"] == count {
 					publish(ip, "filesystemCap", df.Used_per)
@@ -114,7 +114,7 @@ func Check(s *StoreView, ip, devtype string) {
 			//special for yan
 			//docker
 		} else if df.Name == "docker" {
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "dockerCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "dockerCap").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["dockerCap"] += 1
 				if m[ip]["dockerCap"] == count {
 					publish(ip, "dockerCap", df.Used_per)
@@ -124,7 +124,7 @@ func Check(s *StoreView, ip, devtype string) {
 			}
 			//tmp
 		} else if df.Name == "tmp" {
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "tmpCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "tmpCap").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["tmpCap"] += 1
 				if m[ip]["tmpCap"] == count {
 					publish(ip, "tmpCap", df.Used_per)
@@ -134,7 +134,7 @@ func Check(s *StoreView, ip, devtype string) {
 			}
 			//var for /var/log
 		} else if df.Name == "var" {
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "varCap").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "varCap").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["varCap"] += 1
 				if m[ip]["varCap"] == count {
 					publish(ip, "varCap", df.Used_per)
@@ -144,17 +144,17 @@ func Check(s *StoreView, ip, devtype string) {
 			}
 			// weed_mem
 		} else if df.Name == "weed_mem" {
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedMem").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedMem").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["weedMem"] += 1
 				if m[ip]["weedMem"] == count {
-					publish(ip, "weedMem", df.Used_per)
+					publish(ip, "weedMem", df.Used_per, s.MemT, df.Available)
 				}
 			} else {
 				m[ip]["weedMem"] = 0
 			}
 			// weed_cpu
 		} else if df.Name == "weed_cpu" {
-			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedCpu").Filter("warning__gt", df.Used_per).Exist(); !exist {
+			if exist := o.QueryTable("threshhold").Filter("type", devtype).Filter("dev", "weedCpu").Filter("warning__lt", df.Used_per).Exist(); exist {
 				m[ip]["weedCpu"] += 1
 				if m[ip]["weedCpu"] == count {
 					publish(ip, "weedCpu", df.Used_per)
@@ -173,8 +173,16 @@ func publish(ip, typeVal string, val float64, d ...float64) {
 		message = "CPU超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "mem" {
 		t := strconv.FormatFloat(d[0]/1024/1024/1024, 'f', 1, 64)
+		tMb := strconv.FormatFloat(d[0]/1024/1024, 'f', 1, 64)
 		u := strconv.FormatFloat(d[0]/1024/1024/1024*val/100, 'f', 1, 64)
-		message = "内存超过阈值：" + u + "G/" + t + "G  " + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
+		uMb := strconv.FormatFloat(d[0]/1024/1024*val/100, 'f', 1, 64)
+		f := strconv.FormatFloat(d[0]/1024/1024/1024*(1-val/100), 'f', 1, 64)
+		fMb := strconv.FormatFloat(d[0]/1024/1024*(1-val/100), 'f', 1, 64)
+		message = "内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
+			"Total: " + t + "G(" + tMb + "M)" + "<br>" +
+			"Used: " + u + "G(" + uMb + "M)" + "<br>" +
+			"Free(含cache): " + f + "G(" + fMb + "M)"
+
 	} else if typeVal == "cache" {
 		message = "阵列缓存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "sysCap" {
@@ -188,7 +196,17 @@ func publish(ip, typeVal string, val float64, d ...float64) {
 	} else if typeVal == "varCap" {
 		message = "日志区var超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "weedMem" {
-		message = "minio内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
+		t := strconv.FormatFloat(d[0]/1024/1024/1024, 'f', 1, 64)
+		tMb := strconv.FormatFloat(d[0]/1024/1024, 'f', 1, 64)
+		u := strconv.FormatFloat(d[0]/1024/1024/1024*val/100, 'f', 1, 64)
+		uMb := strconv.FormatFloat(d[0]/1024/1024*val/100, 'f', 1, 64)
+		f := strconv.FormatFloat(d[0]/1024/1024/1024*(1-d[1]/100), 'f', 1, 64)
+		fMb := strconv.FormatFloat(d[0]/1024/1024*(1-d[1]/100), 'f', 1, 64)
+		message = "minio内存超过阈值：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
+			"Total: " + t + "G(" + tMb + "M)" + "<br>" +
+			"Used: " + u + "G(" + uMb + "M)" + "<br>" +
+			"Free(含cache): " + f + "G(" + fMb + "M)"
+
 	} else if typeVal == "weedCpu" {
 		message = "minio CPU超过阈值：" + strconv.FormatFloat(val*8, 'f', 1, 64) + "%/800%"
 	}

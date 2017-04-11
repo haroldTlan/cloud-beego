@@ -13,35 +13,32 @@ var StatTopic = New() //set topic
 
 //get infos from nsq
 func InfoStat() {
-	go func() {
-		for {
-			interval, err := beego.AppConfig.Int("interval")
-			if err != nil {
-				AddLog(err)
-			}
-
-			var s Statistics
-			s.Exports = make([]Device, 0)
-			s.Storages = make([]Device, 0)
-			for _, info := range infos {
-				var dev Device
-				dev.Info = append(dev.Info, info)
-				dev.Ip = info.Ip
-				if info.Dev == "storage" {
-					s.Storages = append(s.Storages, dev)
-
-				} else {
-					s.Exports = append(s.Exports, dev)
-				}
-			}
-			StatTopic.Publish(s)
-			s.CheckStand()
-			time.Sleep(time.Duration(interval) * time.Second)
+	for {
+		interval, err := beego.AppConfig.Int("interval")
+		if err != nil {
+			AddLog(err)
 		}
-	}()
+
+		var s Statistics
+		s.Exports = make([]Device, 0)
+		s.Storages = make([]Device, 0)
+		for _, info := range NsqInfos { //NsqInfos is global variable
+			var dev Device
+			dev.Info = append(dev.Info, info)
+			dev.Ip = info.Ip
+			if info.Dev == "storage" {
+				s.Storages = append(s.Storages, dev)
+			} else {
+				s.Exports = append(s.Exports, dev)
+			}
+		}
+		StatTopic.Publish(s)
+		s.CheckStand()
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
 }
 
-//set some value from KB to MB or ...
+//set some value from KB to MB or ... Not Used
 func microAdjust(devInfo *StoreView) StoreView {
 	devInfo.W_Vol = Round(devInfo.W_Vol/1024, 2)
 	devInfo.R_Vol = Round(devInfo.R_Vol/1024, 2)
@@ -56,7 +53,7 @@ func microAdjust(devInfo *StoreView) StoreView {
 	return *devInfo
 }
 
-//keep the places of decimal you want
+//keep the places of decimal you want  Not Used
 func Round(f float64, n int) float64 {
 	pow10_n := math.Pow10(n)
 	return math.Trunc((f+0.5/pow10_n)*pow10_n) / pow10_n
