@@ -4,12 +4,19 @@ import (
 	_ "aserver/routers"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func init() {
 	orm.RegisterDataBase("default", "mysql", "root:passwd@tcp(127.0.0.1:3306)/speediodb?charset=utf8&loc=Local")
+
+	logs.SetLogger(logs.AdapterFile, `{"filename":"/var/log/zoofsmonitor.log","daily":false,"maxdays":365,"level":3}`)
+	logs.EnableFuncCallDepth(true)
+	logs.Async()
+
 }
 
 func main() {
@@ -19,4 +26,3 @@ func main() {
 	}
 	beego.Run()
 }
-

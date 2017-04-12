@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"aserver/controllers/web"
 	"aserver/models"
 	"encoding/json"
 	"errors"
@@ -18,7 +19,6 @@ type MachineController struct {
 // URLMapping ...
 func (c *MachineController) URLMapping() {
 	c.Mapping("Post", c.Post)
-	c.Mapping("GetOne", c.GetOne)
 	c.Mapping("GetAll", c.GetAll)
 	c.Mapping("Put", c.Put)
 	c.Mapping("Delete", c.Delete)
@@ -32,36 +32,25 @@ func (c *MachineController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *MachineController) Post() {
-	var v models.Machine
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if _, err := models.AddMachine(&v); err == nil {
-			c.Ctx.Output.SetStatus(201)
-			c.Data["json"] = v
-		} else {
-			c.Data["json"] = err.Error()
-		}
-	} else {
-		c.Data["json"] = err.Error()
-	}
-	c.ServeJSON()
-}
-
-// GetOne ...
-// @Title Get One
-// @Description get Machine by id
-// @Param	id		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.Machine
-// @Failure 403 :id is empty
-// @router /:id [get]
-func (c *MachineController) GetOne() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	v, err := models.GetMachineById(id)
+	var result map[string]interface{}
+	ip := c.GetString("ip")
+	slotnr, err := c.GetInt("slotnr")
 	if err != nil {
-		c.Data["json"] = err.Error()
-	} else {
-		c.Data["json"] = v
+		models.AddLog(err)
 	}
+
+	devtype := c.GetString("devtype")
+	role := c.GetString("role")
+	cluster := c.GetString("cluster")
+
+	if err := models.AddMachine(ip, devtype, role, cluster, slotnr); err == nil {
+		c.Ctx.Output.SetStatus(201)
+		result = web.NewResponse(err, err)
+	} else {
+		models.AddLog(err)
+		result = web.NewResponse(err, err)
+	}
+	c.Data["json"] = result
 	c.ServeJSON()
 }
 
@@ -110,7 +99,9 @@ func (c *MachineController) GetAll() {
 		for _, cond := range strings.Split(v, ",") {
 			kv := strings.SplitN(cond, ":", 2)
 			if len(kv) != 2 {
-				c.Data["json"] = errors.New("Error: invalid query key/value pair")
+				errs := errors.New("Error: invalid query key/value pair")
+				c.Data["json"] = errs
+				models.AddLog(errs)
 				c.ServeJSON()
 				return
 			}
@@ -120,11 +111,8 @@ func (c *MachineController) GetAll() {
 	}
 
 	l, err := models.GetAllMachine(query, fields, sortby, order, offset, limit)
-	if err != nil {
-		c.Data["json"] = err.Error()
-	} else {
-		c.Data["json"] = l
-	}
+	result := web.NewResponse(l, err)
+	c.Data["json"] = &result
 	c.ServeJSON()
 }
 
@@ -137,18 +125,22 @@ func (c *MachineController) GetAll() {
 // @Failure 403 :id is not int
 // @router /:id [put]
 func (c *MachineController) Put() {
+	var result map[string]interface{}
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
 	v := models.Machine{Id: id}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.UpdateMachineById(&v); err == nil {
-			c.Data["json"] = "OK"
+			result = web.NewResponse("Ok", err)
 		} else {
-			c.Data["json"] = err.Error()
+			result = web.NewResponse(err, err)
+			models.AddLog(err)
 		}
 	} else {
-		c.Data["json"] = err.Error()
+		result = web.NewResponse(err, err)
+		models.AddLog(err)
 	}
+	c.Data["json"] = result
 	c.ServeJSON()
 }
 
@@ -158,14 +150,11 @@ func (c *MachineController) Put() {
 // @Param	id		path 	string	true		"The id you want to delete"
 // @Success 200 {string} delete success!
 // @Failure 403 id is empty
-// @router /:id [delete]
+// @router /:uuid [delete]
 func (c *MachineController) Delete() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	if err := models.DeleteMachine(id); err == nil {
-		c.Data["json"] = "OK"
-	} else {
-		c.Data["json"] = err.Error()
-	}
+	idStr := c.Ctx.Input.Param(":uuid")
+	err := models.DeleteMachine(idStr)
+	result := web.NewResponse(err, err)
+	c.Data["json"] = result
 	c.ServeJSON()
 }

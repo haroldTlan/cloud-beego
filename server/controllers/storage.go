@@ -139,7 +139,7 @@ func (c *StorageController) GetAll() {
 func (c *StorageController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v := models.Storage{Id: id}
+	v := models.Storage{models.ExportInit{Id: id}}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.UpdateStorageById(&v); err == nil {
 			c.Data["json"] = "OK"

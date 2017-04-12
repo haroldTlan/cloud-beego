@@ -139,7 +139,7 @@ func (c *ClientController) GetAll() {
 func (c *ClientController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v := models.Client{Id: id}
+	v := models.Client{models.ExportInit{Id: id}}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.UpdateClientById(&v); err == nil {
 			c.Data["json"] = "OK"

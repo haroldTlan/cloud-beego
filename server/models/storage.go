@@ -5,24 +5,25 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
+	_ "time"
 
 	"github.com/astaxie/beego/orm"
 )
 
 type Storage struct {
-	Id      int       `orm:"column(uid);auto"`
-	Uuid    string    `orm:"column(uuid);size(64);null"`
-	Ip      string    `orm:"column(ip);size(64);null"`
-	Version string    `orm:"column(version);size(64);null"`
-	Size    string    `orm:"column(size);size(64);null"`
-	Master  string    `orm:"column(master);size(64);null"`
-	Cid     int       `orm:"column(cid);null"`
-	Sid     int       `orm:"column(sid);null"`
-	Slot    string    `orm:"column(slot);size(64);null"`
-	Status  int8      `orm:"column(status);null"`
-	Created time.Time `orm:"column(created);type(datetime);null"`
-	Devtype string    `orm:"column(devtype);size(64);null"`
+	/*	Id      int       `orm:"column(uid);auto"`
+		Uuid    string    `orm:"column(uuid);size(64);null"`
+		Ip      string    `orm:"column(ip);size(64);null"`
+		Version string    `orm:"column(version);size(64);null"`
+		Size    string    `orm:"column(size);size(64);null"`
+		Master  string    `orm:"column(master);size(64);null"`
+		Cid     int       `orm:"column(cid);null"`
+		Sid     int       `orm:"column(sid);null"`
+		Slot    string    `orm:"column(slot);size(64);null"`
+		Status  int8      `orm:"column(status);null"`
+		Created time.Time `orm:"column(created);type(datetime);null"`
+		Devtype string    `orm:"column(devtype);size(64);null"`*/
+	ExportInit
 }
 
 func (t *Storage) TableName() string {
@@ -45,7 +46,8 @@ func AddStorage(m *Storage) (id int64, err error) {
 // Id doesn't exist
 func GetStorageById(id int) (v *Storage, err error) {
 	o := orm.NewOrm()
-	v = &Storage{Id: id}
+	//v = &Storage{Id: id}
+	v.ExportInit.Id = id
 	if err = o.Read(v); err == nil {
 		return v, nil
 	}
@@ -134,7 +136,10 @@ func GetAllStorage(query map[string]string, fields []string, sortby []string, or
 // the record to be updated doesn't exist
 func UpdateStorageById(m *Storage) (err error) {
 	o := orm.NewOrm()
-	v := Storage{Id: m.Id}
+	//v := Storage{Id: m.Id}
+	var v Storage
+	v.ExportInit.Id = m.Id
+
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
@@ -149,11 +154,14 @@ func UpdateStorageById(m *Storage) (err error) {
 // the record to be deleted doesn't exist
 func DeleteStorage(id int) (err error) {
 	o := orm.NewOrm()
-	v := Storage{Id: id}
+	//v := Storage{Id: id}
+	var v Storage
+	v.ExportInit.Id = id
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
-		if num, err = o.Delete(&Storage{Id: id}); err == nil {
+		//	if num, err = o.Delete(&Storage{Id: id}); err == nil {
+		if num, err = o.Delete(v); err == nil {
 			fmt.Println("Number of records deleted in database:", num)
 		}
 	}

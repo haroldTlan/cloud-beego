@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,13 +12,13 @@ import (
 )
 
 type Machine struct {
-	Id        int       `orm:"column(uid);auto"`
+	Id        int       `orm:"column(uid);auto" json:"Uid"`
 	Uuid      string    `orm:"column(uuid);size(64);null"`
 	Ip        string    `orm:"column(ip);size(64);null"`
 	Slotnr    int       `orm:"column(slotnr);null"`
 	Created   time.Time `orm:"column(created);type(datetime);null"`
 	Devtype   string    `orm:"column(devtype);size(64);null"`
-	Status    int8      `orm:"column(status);null"`
+	Status    bool      `orm:"column(status);null"`
 	Role      string    `orm:"column(role);size(64);null"`
 	Clusterid string    `orm:"column(clusterid);size(64);null"`
 }
@@ -32,27 +33,51 @@ func init() {
 
 // AddMachine insert a new Machine into database and returns
 // last inserted Id on success.
-func AddMachine(m *Machine) (id int64, err error) {
+func AddMachine(ip, devtype, role, cluster string, slotnr int) (err error) {
 	o := orm.NewOrm()
-	id, err = o.Insert(m)
-	return
-}
 
-// GetMachineById retrieves Machine by Id. Returns error if
-// Id doesn't exist
-func GetMachineById(id int) (v *Machine, err error) {
-	o := orm.NewOrm()
-	v = &Machine{Id: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
+		err = errors.New("not validate IP address")
+		AddLog(err)
+		return
+	} else if exist := o.QueryTable("machine").Filter("ip", ip).Filter("devtype", devtype).Exist(); exist {
+		err = errors.New("Ip address already exits")
+		AddLog(err)
+		return
+	} else if len(devtype) == 0 {
+		err = errors.New("devtype type not set")
+		AddLog(err)
+		return
+	} else if devtype != "client" || devtype != "storage" || devtype != "export" {
+		err = errors.New("not validate devtype")
+		AddLog(err)
+		return
 	}
-	return nil, err
+
+	var m Machine
+	uran := Urandom()
+	uuid := uran + "zip" + strings.Join(strings.Split(ip, "."), "")
+	m.Uuid = uuid
+	m.Ip = ip
+	m.Devtype = devtype
+	m.Slotnr = slotnr
+	m.Created = time.Now()
+	m.Status = true
+	//m.Role = role
+	//.Clusterid = cluster
+
+	if _, err = o.Insert(&m); err != nil {
+		AddLog(err)
+		return
+	}
+	return
 }
 
 // GetAllMachine retrieves all Machine matches certain condition. Returns empty list if
 // no records exist
 func GetAllMachine(query map[string]string, fields []string, sortby []string, order []string,
 	offset int64, limit int64) (ml []interface{}, err error) {
+	ml = make([]interface{}, 0)
 	o := orm.NewOrm()
 	qs := o.QueryTable(new(Machine))
 	// query k=v
@@ -124,6 +149,7 @@ func GetAllMachine(query map[string]string, fields []string, sortby []string, or
 		}
 		return ml, nil
 	}
+
 	return nil, err
 }
 
@@ -144,15 +170,18 @@ func UpdateMachineById(m *Machine) (err error) {
 
 // DeleteMachine deletes Machine by Id and returns error if
 // the record to be deleted doesn't exist
-func DeleteMachine(id int) (err error) {
+func DeleteMachine(uuid string) (err error) {
 	o := orm.NewOrm()
-	v := Machine{Id: id}
 	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Delete(&Machine{Id: id}); err == nil {
-			fmt.Println("Number of records deleted in database:", num)
+	if exist := o.QueryTable("machine").Filter("uuid", uuid).Exist(); exist {
+		if _, err = o.QueryTable("machine").Filter("uuid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
 		}
+	} else {
+		err = errors.New("uuid not exits")
+		AddLog(err)
+		return
 	}
-	return
+	return nil
 }

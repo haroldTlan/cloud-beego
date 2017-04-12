@@ -2,7 +2,9 @@ package models
 
 import (
 	"fmt"
+	"github.com/astaxie/beego/logs"
 	"os"
+	"runtime"
 )
 
 func Urandom() string {
@@ -14,6 +16,17 @@ func Urandom() string {
 	return uuid
 }
 
+//logs
+func AddLog(err interface{}, v ...interface{}) {
+	if _, ok := err.(error); ok {
+		pc, _, line, _ := runtime.Caller(1)
+		logs.Error("[Server] ", runtime.FuncForPC(pc).Name(), line, v, err)
+	} else {
+		logs.Info("[Server] ", err)
+	}
+}
+
+/*
 func NewResponse(status string, detail interface{}) map[string]interface{} {
 	o := make(map[string]interface{})
 	o["status"] = status
@@ -27,4 +40,4 @@ func NewResponse(status string, detail interface{}) map[string]interface{} {
 		}
 	}
 	return o
-}
+}*/

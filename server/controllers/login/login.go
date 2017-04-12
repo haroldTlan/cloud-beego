@@ -1,7 +1,12 @@
 package login
 
 import (
+	"aserver/controllers/web"
+	"aserver/models"
 	"github.com/astaxie/beego"
+
+	"net"
+	"strings"
 )
 
 type Session struct {
@@ -40,8 +45,15 @@ func (c *LoginController) Post() {
 // @Failure 403
 // @router / [get]
 func (c *LoginController) GetIfaces() {
-	var sess Session
-	sess.Id = 111
-	c.Data["json"] = &sess
+	info, err := net.InterfaceAddrs()
+	if err != nil {
+		models.AddLog(err)
+	}
+	ifaces := make([]string, 0)
+	for _, addr := range info {
+		ifaces = append(ifaces, strings.Split(addr.String(), "/")[0])
+	}
+	result := web.NewResponse(ifaces, err)
+	c.Data["json"] = &result
 	c.ServeJSON()
 }

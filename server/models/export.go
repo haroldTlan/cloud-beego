@@ -5,14 +5,23 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	_ "time"
 
 	"github.com/astaxie/beego/orm"
 )
 
 type Export struct {
-	ExportInit
-	Role    string `orm:"column(role);size(64);null"`
-	Virtual string `orm:"column(virtual);size(64);null"`
+	ExportInit `orm:"auto"`
+	/*	Id      int       `orm:"column(uid);auto"`
+		Uuid    string    `orm:"column(uuid);size(64);null"`
+		Ip      string    `orm:"column(ip);size(64);null"`
+		Version string    `orm:"column(version);size(64);null"`
+		Size    string    `orm:"column(size);size(64);null"`
+		Status  int8      `orm:"column(status);null"`
+		Created time.Time `orm:"column(created);type(datetime);null"`
+		Devtype string    `orm:"column(devtype);size(64);null"`*/
+	//Role    string `orm:"column(role);size(64);null"`
+	//Virtual string `orm:"column(virtual);size(64);null"`
 }
 
 func (t *Export) TableName() string {
@@ -35,7 +44,8 @@ func AddExport(m *Export) (id int64, err error) {
 // Id doesn't exist
 func GetExportById(id int) (v *Export, err error) {
 	o := orm.NewOrm()
-	v = &Export{ExportInit{Id: id}}
+	//v = &Export{ExportInit{Id: id}}
+	v.ExportInit.Id = id
 	if err = o.Read(v); err == nil {
 		return v, nil
 	}
@@ -124,7 +134,10 @@ func GetAllExport(query map[string]string, fields []string, sortby []string, ord
 // the record to be updated doesn't exist
 func UpdateExportById(m *Export) (err error) {
 	o := orm.NewOrm()
-	v := Export{ExportInit{Id: m.Id}}
+	var v Export
+	//v := Export{ExportInit{Id: m.Id}}
+	v.ExportInit.Id = m.Id
+
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
@@ -139,11 +152,14 @@ func UpdateExportById(m *Export) (err error) {
 // the record to be deleted doesn't exist
 func DeleteExport(id int) (err error) {
 	o := orm.NewOrm()
-	v := Export{ExportInit{Id: id}}
+	var v Export
+	v.ExportInit.Id = id
+
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
-		if num, err = o.Delete(&Export{ExportInit{Id: id}}); err == nil {
+		//	if num, err = o.Delete(&Export{ExportInit{Id: id}}); err == nil {
+		if num, err = o.Delete(v); err == nil {
 			fmt.Println("Number of records deleted in database:", num)
 		}
 	}
