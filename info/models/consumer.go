@@ -3,12 +3,13 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	_ "fmt"
 	"github.com/astaxie/beego/orm"
 	"github.com/crackcomm/nsqueue/consumer"
 	"os"
 	"sync"
 	"time"
+
+	_ "fmt"
 )
 
 var (
@@ -39,6 +40,9 @@ func handle(msg *consumer.Message) {
 				continue
 			} else {
 				InfoTest(&val, val.Ip)
+			}
+			if val.Dev == "storage" {
+				AddRest(val.Ip, val.Rest)
 			}
 		}
 	}
