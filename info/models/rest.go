@@ -85,7 +85,7 @@ func AddInitiators(inits []Inits, machineid string) (err error) {
 		var i Initiators
 		i.Portals = strings.Join(init.Portals, "*")
 		i.Wwn = init.Wwn
-		i.Id_RENAME = init.Id
+		i.Id = init.Id
 		i.Volumes = strings.Join(init.Volumes, "*")
 		i.Active = init.Active
 		i.Machineid = machineid
@@ -123,9 +123,14 @@ func AddFs(fs []Fs, machineid string) (err error) {
 func AddJournals(js []Journals, machineid string) (err error) {
 	o := orm.NewOrm()
 	for _, j := range js {
+		//var p []orm.Params
+		//unix := strconv.FormatInt(j.Unix, 10)
 		j.Machineid = machineid
 		j.Created = time.Unix(j.Unix, 0)
-		if exist := o.QueryTable(new(Journals)).Filter("machineid", machineid).Filter("created_at", j.Unix).Exist(); exist {
+		//sql := "select uid from `journals` where machineid='" + machineid + "' and created_at='" + unix + "' and message='" + j.Message + "' limit 1"
+		//num, _ := o.Raw(sql).Values(&p)
+
+		if exist := o.QueryTable(new(Journals)).Filter("machineid", machineid).Filter("message", j.Message).Filter("created_at", j.Unix).Exist(); exist {
 			if _, err := o.Update(&j); err != nil {
 				AddLog(err)
 			}

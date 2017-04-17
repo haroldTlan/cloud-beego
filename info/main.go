@@ -19,7 +19,9 @@ var (
 
 func init() {
 	orm.RegisterDataBase("default", "mysql", "root:passwd@tcp(127.0.0.1:3306)/speediodb?charset=utf8&loc=Local")
-	logs.SetLogger(logs.AdapterFile, `{"filename":"info.log","daily":false,"maxdays":365,"level":3}`)
+
+	//setting log, file in info's dir
+	logs.SetLogger(logs.AdapterFile, `{"filename":"/var/log/zoofsmonitor.log","daily":false,"maxdays":365,"level":3}`)
 	logs.EnableFuncCallDepth(true)
 	logs.Async()
 }
@@ -27,10 +29,13 @@ func init() {
 func main() {
 	flag.Parse()
 	//Must init first
-	models.InfoStat()
-
+	//checking infos from nsq
+	go models.InfoStat()
+	//init nsq and get infos from pubs
 	go models.RunConsumer(*maxInFlight, *nsqdAddr)
+	//clear global variable when datas did not found or machine did not being monitored.
 	go models.ClearInfos()
+
 	beego.Router("/ws/info", &controllers.WebSocketController{}, "get:Join")
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true

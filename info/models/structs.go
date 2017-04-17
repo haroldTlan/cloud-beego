@@ -101,7 +101,7 @@ type Inits struct {
 type Initiators struct {
 	Portals   string `orm:"column(portals);size(64);pk"`
 	Wwn       string `orm:"column(wwn);size(64)"`
-	Id_RENAME string `orm:"column(id);size(64)" json:"id"`
+	Id        string `orm:"column(id);size(64)" json:"id"`
 	Volumes   string `orm:"column(volumes);size(10)"`
 	Active    bool   `orm:"column(active)"`
 	Machineid string `orm:"column(machineid);size(64)"`
@@ -116,7 +116,8 @@ type Fs struct {
 }
 
 type Journals struct {
-	Message   string    `orm:"column(message);size(64);pk" json:"message"`
+	Uid       int       `orm:"column(uid);auto"`
+	Message   string    `orm:"column(message);size(64)" json:"message"`
 	Created   time.Time `orm:"column(created);type(datetime)"  json:"created"`
 	Unix      int64     `orm:"column(created_at)" json:"created_at"`
 	Level     string    `orm:"column(level);size(64)" json:"level"`
