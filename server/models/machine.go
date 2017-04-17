@@ -28,7 +28,7 @@ func (t *Machine) TableName() string {
 }
 
 func init() {
-	orm.RegisterModel(new(Machine))
+	orm.RegisterModel(new(Machine), new(Disks), new(Raids), new(Volumes), new(Initiators), new(Fs), new(Journals))
 }
 
 // AddMachine insert a new Machine into database and returns
@@ -48,7 +48,7 @@ func AddMachine(ip, devtype, role, cluster string, slotnr int) (err error) {
 		err = errors.New("devtype type not set")
 		AddLog(err)
 		return
-	} else if devtype != "client" || devtype != "storage" || devtype != "export" {
+	} else if devtype != "client" && devtype != "storage" && devtype != "export" {
 		err = errors.New("not validate devtype")
 		AddLog(err)
 		return
@@ -174,7 +174,31 @@ func DeleteMachine(uuid string) (err error) {
 	o := orm.NewOrm()
 	// ascertain id exists in the database
 	if exist := o.QueryTable("machine").Filter("uuid", uuid).Exist(); exist {
-		if _, err = o.QueryTable("machine").Filter("uuid", uuid).Delete(); err != nil {
+		if _, err = o.QueryTable(new(Disks)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Raids)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Volumes)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Initiators)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Fs)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Journals)).Filter("machineid", uuid).Delete(); err != nil {
+			AddLog(err)
+			return
+		}
+		if _, err = o.QueryTable(new(Machine)).Filter("uuid", uuid).Delete(); err != nil {
 			AddLog(err)
 			return
 		}

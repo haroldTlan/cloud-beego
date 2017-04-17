@@ -20,6 +20,13 @@ func init() {
 			AllowHTTPMethods: []string{"get"},
 			Params: nil})
 
+	beego.GlobalControllerRouter["aserver/controllers/device:DeviceController"] = append(beego.GlobalControllerRouter["aserver/controllers/device:DeviceController"],
+		beego.ControllerComments{
+			Method: "Del",
+			Router: `/:uuid`,
+			AllowHTTPMethods: []string{"delete"},
+			Params: nil})
+
 	beego.GlobalControllerRouter["aserver/controllers/device:StoreViewsController"] = append(beego.GlobalControllerRouter["aserver/controllers/device:StoreViewsController"],
 		beego.ControllerComments{
 			Method: "GetStoreviews",

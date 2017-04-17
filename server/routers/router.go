@@ -29,7 +29,11 @@ func init() {
 				&login.LoginController{},
 			),
 		),
-
+		beego.NSNamespace("/systeminfo",
+			beego.NSInclude(
+				&login.SystemInfoController{},
+			),
+		),
 		beego.NSNamespace("/devices",
 			beego.NSInclude(
 				&device.DeviceController{},
@@ -41,10 +45,44 @@ func init() {
 				&device.StoreViewsController{},
 			),
 		),
-
-		beego.NSNamespace("/client",
+		beego.NSNamespace("/machines",
+			beego.NSInclude(
+				&controllers.MachineController{},
+			),
+		),
+		beego.NSNamespace("/machinedetails",
+			beego.NSInclude(
+				&controllers.MachineDetailsController{},
+			),
+		),
+		beego.NSNamespace("/journals",
+			beego.NSInclude(
+				&controllers.JournalsController{},
+			),
+		),
+		/*	beego.NSNamespace("/client",
 			beego.NSInclude(
 				&controllers.ClientController{},
+			),
+		),*/
+		beego.NSNamespace("/emergency",
+			beego.NSInclude(
+				&controllers.EmergencyController{},
+			),
+		),
+		beego.NSNamespace("/threshhold",
+			beego.NSInclude(
+				&controllers.ThreshholdController{},
+			),
+		),
+		beego.NSNamespace("/mail",
+			beego.NSInclude(
+				&controllers.MailController{},
+			),
+		),
+		beego.NSNamespace("/zoofs",
+			beego.NSInclude(
+				&controllers.ZoofsController{},
 			),
 		),
 		/*

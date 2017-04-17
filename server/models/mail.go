@@ -10,10 +10,10 @@ import (
 )
 
 type Mail struct {
-	Id      int    `orm:"column(uid);auto"`
-	Address string `orm:"column(address);size(64);null"`
-	Level   int    `orm:"column(level);null"`
-	Ttl     int    `orm:"column(ttl);null"`
+	Id      int    `orm:"column(uid);auto" json:"uid"`
+	Address string `orm:"column(address);size(64);null" json:"address"`
+	Level   int    `orm:"column(level);null" json:"level"`
+	Ttl     int    `orm:"column(ttl);null" json:"ttl"`
 }
 
 func (t *Mail) TableName() string {

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"aserver/controllers/web"
 	"aserver/models"
 	"encoding/json"
 	"errors"
@@ -82,7 +83,7 @@ func (c *ThreshholdController) GetAll() {
 	var sortby []string
 	var order []string
 	var query = make(map[string]string)
-	var limit int64 = 10
+	var limit int64 = 100
 	var offset int64
 
 	// fields: col1,col2,entity.col3
@@ -120,11 +121,8 @@ func (c *ThreshholdController) GetAll() {
 	}
 
 	l, err := models.GetAllThreshhold(query, fields, sortby, order, offset, limit)
-	if err != nil {
-		c.Data["json"] = err.Error()
-	} else {
-		c.Data["json"] = l
-	}
+	result := web.NewResponse(l, err)
+	c.Data["json"] = &result
 	c.ServeJSON()
 }
 

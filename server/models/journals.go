@@ -1,155 +1,107 @@
 package models
 
 import (
-	"errors"
 	"fmt"
-	"reflect"
-	"strings"
-	"time"
-
+	"github.com/astaxie/beego/context"
 	"github.com/astaxie/beego/orm"
+	_ "net/http"
+	"strconv"
+	"time"
 )
 
-type Journals struct {
-	Id             int       `orm:"column(uid);auto"`
-	Level          string    `orm:"column(level);size(50);null"`
-	Message        string    `orm:"column(message);size(200);null"`
-	ChineseMessage string    `orm:"column(chinese_message);size(200);null"`
-	UpdatedAt      time.Time `orm:"column(updated_at);type(datetime);null"`
-	CreatedAt      time.Time `orm:"column(created_at);type(datetime);null"`
+type ResEmergency struct {
+	Uid            int       `json:"uid"`
+	Created        time.Time `orm:"index" json:"created"`
+	Unix           int64     `json:"unix"`
+	Ip             string    `json:"ip"`
+	Event          string    `json:"event"`
+	MachineId      string    `json:"machineId"`
+	Devtype        string    `json:"devtype"`
+	Level          string    `json:"level"`
+	ChineseMessage string    `json:"chinese_message"`
+	Status         bool      `json:"status"`
 }
 
-func (t *Journals) TableName() string {
-	return "journals"
-}
-
-func init() {
-	orm.RegisterModel(new(Journals))
-}
-
-// AddJournals insert a new Journals into database and returns
-// last inserted Id on success.
-func AddJournals(m *Journals) (id int64, err error) {
+func GetJournals() (es []ResEmergency, err error) {
 	o := orm.NewOrm()
-	id, err = o.Insert(m)
-	return
-}
-
-// GetJournalsById retrieves Journals by Id. Returns error if
-// Id doesn't exist
-func GetJournalsById(id int) (v *Journals, err error) {
-	o := orm.NewOrm()
-	v = &Journals{Id: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
-	}
-	return nil, err
-}
-
-// GetAllJournals retrieves all Journals matches certain condition. Returns empty list if
-// no records exist
-func GetAllJournals(query map[string]string, fields []string, sortby []string, order []string,
-	offset int64, limit int64) (ml []interface{}, err error) {
-	o := orm.NewOrm()
-	qs := o.QueryTable(new(Journals))
-	// query k=v
-	for k, v := range query {
-		// rewrite dot-notation to Object__Attribute
-		k = strings.Replace(k, ".", "__", -1)
-		if strings.Contains(k, "isnull") {
-			qs = qs.Filter(k, (v == "true" || v == "1"))
-		} else {
-			qs = qs.Filter(k, v)
-		}
-	}
-	// order by:
-	var sortFields []string
-	if len(sortby) != 0 {
-		if len(sortby) == len(order) {
-			// 1) for each sort field, there is an associated order
-			for i, v := range sortby {
-				orderby := ""
-				if order[i] == "desc" {
-					orderby = "-" + v
-				} else if order[i] == "asc" {
-					orderby = v
-				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
-				}
-				sortFields = append(sortFields, orderby)
-			}
-			qs = qs.OrderBy(sortFields...)
-		} else if len(sortby) != len(order) && len(order) == 1 {
-			// 2) there is exactly one order, all the sorted fields will be sorted by this order
-			for _, v := range sortby {
-				orderby := ""
-				if order[0] == "desc" {
-					orderby = "-" + v
-				} else if order[0] == "asc" {
-					orderby = v
-				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
-				}
-				sortFields = append(sortFields, orderby)
-			}
-		} else if len(sortby) != len(order) && len(order) != 1 {
-			return nil, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
-		}
-	} else {
-		if len(order) != 0 {
-			return nil, errors.New("Error: unused 'order' fields")
-		}
+	es = make([]ResEmergency, 0)
+	emergencys := make([]Emergency, 0) //TODO emergency
+	if _, err = o.QueryTable(new(Emergency)).Filter("status", 0).All(&emergencys); err != nil {
+		return
 	}
 
-	var l []Journals
-	qs = qs.OrderBy(sortFields...)
-	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
-		if len(fields) == 0 {
-			for _, v := range l {
-				ml = append(ml, v)
-			}
-		} else {
-			// trim unused fields
-			for _, v := range l {
-				m := make(map[string]interface{})
-				val := reflect.ValueOf(v)
-				for _, fname := range fields {
-					m[fname] = val.FieldByName(fname).Interface()
-				}
-				ml = append(ml, m)
-			}
+	for _, i := range emergencys {
+		var one Machine
+		if _, err = o.QueryTable(new(Machine)).Filter("ip", i.Ip).All(&one); err != nil {
+			return
 		}
-		return ml, nil
-	}
-	return nil, err
-}
 
-// UpdateJournals updates Journals by Id and returns error if
-// the record to be updated doesn't exist
-func UpdateJournalsById(m *Journals) (err error) {
-	o := orm.NewOrm()
-	v := Journals{Id: m.Id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
-		}
+		var jour ResEmergency
+		jour.Uid = i.Id
+		jour.Created = i.CreatedAt
+		jour.Unix = i.CreatedAt.Unix()
+		jour.Event = i.Event
+		jour.Level = i.Level
+		jour.ChineseMessage = i.ChineseMessage
+		jour.Status = i.Status
+		jour.MachineId = one.Uuid
+		jour.Ip = one.Ip
+		jour.Devtype = one.Devtype
+		es = append(es, jour)
 	}
 	return
 }
 
-// DeleteJournals deletes Journals by Id and returns error if
-// the record to be deleted doesn't exist
-func DeleteJournals(id int) (err error) {
-	o := orm.NewOrm()
-	v := Journals{Id: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Delete(&Journals{Id: id}); err == nil {
-			fmt.Println("Number of records deleted in database:", num)
+func Datatables(aColumns []string, Input *context.BeegoInput) ([][]interface{}, int64, int64) {
+	/*
+			   Paging  分页请求
+		       iDisplayStart  起始数目
+		       iDisplayLength 每页显示数量
+	*/
+	iDisplayStart, _ := strconv.Atoi(Input.Query("iDisplayStart"))
+	iDisplayLength, _ := strconv.Atoi(Input.Query("iDisplayLength"))
+
+	//  * Filtering  快速过滤器
+	cond := orm.NewCondition()
+	if len(Input.Query("sSearch")) > 0 {
+		for i := 0; i < len(aColumns); i++ {
+			cond = cond.Or(aColumns[i]+"__icontains", Input.Query("sSearch"))
 		}
 	}
-	return
+
+	for i := 0; i < len(aColumns); i++ {
+		if Input.Query("bSearchable_"+strconv.Itoa(i)) == "true" && len(Input.Query("sSearch_"+strconv.Itoa(i))) > 0 {
+			cond = cond.And(aColumns[i]+"__icontains", Input.Query("sSearch"))
+		}
+	}
+
+	maps, b, c := AllLocalJournals(iDisplayStart, iDisplayLength, cond)
+
+	var output = make([][]interface{}, len(maps))
+	for i, m := range maps {
+		for _, v := range aColumns {
+			if v == "CreatedAt" {
+				fmt.Printf("%+v", m[v])
+				output[i] = append(output[i], m[v].(time.Time).Format("2006-01-02 15:04:05"))
+			} else {
+				output[i] = append(output[i], m[v])
+			}
+		}
+	}
+	return output, b, c
+}
+
+func AllLocalJournals(start, length int, cond *orm.Condition) ([]orm.Params, int64, int64) {
+	o := orm.NewOrm()
+	ones := make([]orm.Params, 0)
+
+	qs_emergency := o.QueryTable("emergency")
+	qs_emergency = qs_emergency.OrderBy("-" + "uid")
+	counts, _ := qs_emergency.Count()
+	qs_emergency = qs_emergency.Limit(length, start)
+	qs_emergency = qs_emergency.SetCond(cond)
+	qs_emergency.Values(&ones)
+	count, _ := qs_emergency.Count()
+
+	return ones, count, counts
 }

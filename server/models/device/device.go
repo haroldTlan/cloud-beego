@@ -28,7 +28,7 @@ func AddDevice(ip, version, size, devtype, cluster string) (err error) {
 	base.Ip = ip
 	base.Version = version
 	base.Size = size
-	base.Status = 0
+	base.Status = true
 	base.Devtype = devtype
 	base.Created = time.Now()
 	//base.Clusterid = cluster

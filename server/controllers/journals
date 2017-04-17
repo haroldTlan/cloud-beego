@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"aserver/controllers/web"
 	"aserver/models"
 	"encoding/json"
 	"errors"
@@ -11,13 +10,13 @@ import (
 	"github.com/astaxie/beego"
 )
 
-// MailController operations for Mail
-type MailController struct {
+// JournalsController operations for Journals
+type JournalsController struct {
 	beego.Controller
 }
 
 // URLMapping ...
-func (c *MailController) URLMapping() {
+func (c *JournalsController) URLMapping() {
 	c.Mapping("Post", c.Post)
 	c.Mapping("GetOne", c.GetOne)
 	c.Mapping("GetAll", c.GetAll)
@@ -27,15 +26,15 @@ func (c *MailController) URLMapping() {
 
 // Post ...
 // @Title Post
-// @Description create Mail
-// @Param	body		body 	models.Mail	true		"body for Mail content"
-// @Success 201 {int} models.Mail
+// @Description create Journals
+// @Param	body		body 	models.Journals	true		"body for Journals content"
+// @Success 201 {int} models.Journals
 // @Failure 403 body is empty
 // @router / [post]
-func (c *MailController) Post() {
-	var v models.Mail
+func (c *JournalsController) Post() {
+	var v models.Journals
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if _, err := models.AddMail(&v); err == nil {
+		if _, err := models.AddJournals(&v); err == nil {
 			c.Ctx.Output.SetStatus(201)
 			c.Data["json"] = v
 		} else {
@@ -49,15 +48,15 @@ func (c *MailController) Post() {
 
 // GetOne ...
 // @Title Get One
-// @Description get Mail by id
+// @Description get Journals by id
 // @Param	id		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.Mail
+// @Success 200 {object} models.Journals
 // @Failure 403 :id is empty
 // @router /:id [get]
-func (c *MailController) GetOne() {
+func (c *JournalsController) GetOne() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v, err := models.GetMailById(id)
+	v, err := models.GetJournalsById(id)
 	if err != nil {
 		c.Data["json"] = err.Error()
 	} else {
@@ -68,17 +67,17 @@ func (c *MailController) GetOne() {
 
 // GetAll ...
 // @Title Get All
-// @Description get Mail
+// @Description get Journals
 // @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
 // @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
 // @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
 // @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
 // @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
 // @Param	offset	query	string	false	"Start position of result set. Must be an integer"
-// @Success 200 {object} models.Mail
+// @Success 200 {object} models.Journals
 // @Failure 403
 // @router / [get]
-func (c *MailController) GetAll() {
+func (c *JournalsController) GetAll() {
 	var fields []string
 	var sortby []string
 	var order []string
@@ -120,27 +119,29 @@ func (c *MailController) GetAll() {
 		}
 	}
 
-	l, err := models.GetAllMail(query, fields, sortby, order, offset, limit)
-	result := web.NewResponse(l, err)
-	c.Data["json"] = &result
-
+	l, err := models.GetAllJournals(query, fields, sortby, order, offset, limit)
+	if err != nil {
+		c.Data["json"] = err.Error()
+	} else {
+		c.Data["json"] = l
+	}
 	c.ServeJSON()
 }
 
 // Put ...
 // @Title Put
-// @Description update the Mail
+// @Description update the Journals
 // @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Mail	true		"body for Mail content"
-// @Success 200 {object} models.Mail
+// @Param	body		body 	models.Journals	true		"body for Journals content"
+// @Success 200 {object} models.Journals
 // @Failure 403 :id is not int
 // @router /:id [put]
-func (c *MailController) Put() {
+func (c *JournalsController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v := models.Mail{Id: id}
+	v := models.Journals{Id: id}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := models.UpdateMailById(&v); err == nil {
+		if err := models.UpdateJournalsById(&v); err == nil {
 			c.Data["json"] = "OK"
 		} else {
 			c.Data["json"] = err.Error()
@@ -153,15 +154,15 @@ func (c *MailController) Put() {
 
 // Delete ...
 // @Title Delete
-// @Description delete the Mail
+// @Description delete the Journals
 // @Param	id		path 	string	true		"The id you want to delete"
 // @Success 200 {string} delete success!
 // @Failure 403 id is empty
 // @router /:id [delete]
-func (c *MailController) Delete() {
+func (c *JournalsController) Delete() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	if err := models.DeleteMail(id); err == nil {
+	if err := models.DeleteJournals(id); err == nil {
 		c.Data["json"] = "OK"
 	} else {
 		c.Data["json"] = err.Error()
