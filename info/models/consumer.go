@@ -42,7 +42,7 @@ func handle(msg *consumer.Message) {
 				InfoTest(&val, val.Ip)
 			}
 			if val.Dev == "storage" {
-				AddRest(val.Ip, val.Rest)
+				AddRest(val.Ip, val.Rest) //update rest
 			}
 		}
 	}

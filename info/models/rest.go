@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	orm.RegisterModel(new(Disks), new(Raids), new(Volumes), new(Initiators), new(Fs), new(Journals))
+	orm.RegisterModel(new(Disks), new(Raids), new(Volumes), new(Initiators), new(Fs), new(Journals), new(Dsus))
 }
 
 func AddRest(ip string, rest Rest) {
@@ -23,12 +23,40 @@ func AddRest(ip string, rest Rest) {
 	AddFs(rest.Filesystem, m.Uuid)
 	AddInitiators(rest.Initiator, m.Uuid)
 	AddJournals(rest.Journal, m.Uuid)
+	AddDsus(rest.Dsu, m.Uuid)
 
 }
 
 func AddDisks(disks []Disks, machineid string) (err error) {
-
 	o := orm.NewOrm()
+
+	//when someone is out of disks
+	out := make(map[string]bool, 0)
+	var ds []Disks
+
+	//ds from databases
+	if _, err := o.QueryTable(new(Disks)).Filter("machineid", machineid).All(&ds); err != nil {
+		AddLog(err)
+	}
+
+	//Delete when some disks disappear
+	for _, d := range ds {
+		out[d.Uuid] = false
+		for _, now := range disks {
+			if d.Uuid == now.Uuid {
+				out[d.Uuid] = true
+			}
+		}
+	}
+	for k, v := range out {
+		if !v {
+			if _, err = o.QueryTable(new(Disks)).Filter("uuid", k).Delete(); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+
+	//Update or Insert
 	for _, disk := range disks {
 		disk.Machineid = machineid
 		if exist := o.QueryTable(new(Disks)).Filter("machineid", machineid).Filter("uuid", disk.Uuid).Exist(); exist {
@@ -46,6 +74,7 @@ func AddDisks(disks []Disks, machineid string) (err error) {
 
 func AddRaids(raids []Raids, machineid string) (err error) {
 	o := orm.NewOrm()
+
 	for _, raid := range raids {
 		raid.Machineid = machineid
 		if exist := o.QueryTable(new(Raids)).Filter("machineid", machineid).Filter("uuid", raid.Uuid).Exist(); exist {
@@ -108,20 +137,23 @@ func AddFs(fs []Fs, machineid string) (err error) {
 	for _, f := range fs {
 		f.Machineid = machineid
 		if exist := o.QueryTable(new(Fs)).Filter("machineid", machineid).Filter("uuid", f.Uuid).Exist(); exist {
-			if _, err := o.Update(&f); err != nil {
+			if _, err = o.Update(&f); err != nil {
 				AddLog(err)
+				return
 			}
 		} else {
-			if _, err := o.Insert(&f); err != nil {
+			if _, err = o.Insert(&f); err != nil {
 				AddLog(err)
+				return
 			}
 		}
 	}
-	return nil
+	return
 }
 
 func AddJournals(js []Journals, machineid string) (err error) {
 	o := orm.NewOrm()
+
 	for _, j := range js {
 		//var p []orm.Params
 		//unix := strconv.FormatInt(j.Unix, 10)
@@ -141,4 +173,22 @@ func AddJournals(js []Journals, machineid string) (err error) {
 		}
 	}
 	return nil
+}
+
+func AddDsus(d []Dsus, machineid string) (err error) {
+	o := orm.NewOrm()
+
+	for _, lm := range d {
+		lm.Machineid = machineid
+		if exist := o.QueryTable(new(Dsus)).Filter("machineid", machineid).Exist(); exist {
+			if _, err = o.Update(&lm); err != nil {
+				AddLog(err)
+			}
+		} else {
+			if _, err = o.Insert(&lm); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+	return
 }

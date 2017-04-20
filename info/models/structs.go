@@ -45,12 +45,19 @@ type Df struct {
 }
 
 type Rest struct {
+	Dsu        []Dsus     `json:"dsus"`
 	Disk       []Disks    `json:"disk"`
 	Raid       []Raids    `json:"raid"`
 	Volume     []Volumes  `json:"volume"`
 	Initiator  []Inits    `json:"initiator"`
 	Filesystem []Fs       `json:"filesystem"`
 	Journal    []Journals `json:"journal"`
+}
+
+type Dsus struct {
+	Location      string `orm:"column(location);size(255)" json:"location"`
+	SupportDiskNr int    `orm:"column(support_disk_nr)" json:"support_disk_nr"`
+	Machineid     string `orm:"column(machineid);size(255);pk" json:"machineid"`
 }
 
 type Disks struct {
