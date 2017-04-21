@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"aserver/models"
+	"aserver/models/device"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -32,9 +32,9 @@ func (c *EmergencyController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *EmergencyController) Post() {
-	var v models.Emergency
+	var v device.Emergency
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if _, err := models.AddEmergency(&v); err == nil {
+		if _, err := device.AddEmergency(&v); err == nil {
 			c.Ctx.Output.SetStatus(201)
 			c.Data["json"] = v
 		} else {
@@ -56,7 +56,7 @@ func (c *EmergencyController) Post() {
 func (c *EmergencyController) GetOne() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v, err := models.GetEmergencyById(id)
+	v, err := device.GetEmergencyById(id)
 	if err != nil {
 		c.Data["json"] = err.Error()
 	} else {
@@ -119,7 +119,7 @@ func (c *EmergencyController) GetAll() {
 		}
 	}
 
-	l, err := models.GetAllEmergency(query, fields, sortby, order, offset, limit)
+	l, err := device.GetAllEmergency(query, fields, sortby, order, offset, limit)
 	if err != nil {
 		c.Data["json"] = err.Error()
 	} else {
@@ -139,13 +139,9 @@ func (c *EmergencyController) GetAll() {
 func (c *EmergencyController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v := models.Emergency{Id: id}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := models.UpdateEmergencyById(&v); err == nil {
-			c.Data["json"] = "OK"
-		} else {
-			c.Data["json"] = err.Error()
-		}
+
+	if err := device.UpdateEmergencyById(id); err == nil {
+		c.Data["json"] = "OK"
 	} else {
 		c.Data["json"] = err.Error()
 	}
@@ -162,7 +158,7 @@ func (c *EmergencyController) Put() {
 func (c *EmergencyController) Delete() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	if err := models.DeleteEmergency(id); err == nil {
+	if err := device.DeleteEmergency(id); err == nil {
 		c.Data["json"] = "OK"
 	} else {
 		c.Data["json"] = err.Error()

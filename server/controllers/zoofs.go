@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"aserver/controllers/web"
-	"aserver/models"
+	"aserver/models/device"
 	"github.com/astaxie/beego"
 	_ "time"
 )
@@ -15,6 +15,7 @@ type ZoofsController struct {
 // URLMapping ...
 func (c *ZoofsController) URLMapping() {
 	c.Mapping("Post", c.Post)
+	c.Mapping("Delete", c.Delete)
 }
 
 // Post ...
@@ -24,12 +25,31 @@ func (c *ZoofsController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *ZoofsController) Post() {
-	export := c.GetString("export")
-	expand := c.GetString("expand")
-	client := c.GetString("client")
-	id := c.GetString("id")
-	err := models.Zoofs(export, expand, client, id)
+	cid := c.GetString("uuid") //uuid
+	level, err := c.GetInt("level")
+	if err != nil {
+		result := web.NewResponse(err.Error(), err)
+		c.Data["json"] = &result
+		c.ServeJSON()
+		return
+	}
+	err = device.Zoofs(cid, level) //(export, expand, client, id, level)
 	result := web.NewResponse(err, err)
 	c.Data["json"] = &result
+	c.ServeJSON()
+}
+
+// Delete ...
+// @Title Delete
+// @Description delete the zoofs
+// @Param   id      path    string  true        "The id you want to delete"
+// @Success 200 {string} delete success!
+// @Failure 403 id is empty
+// @router /:uuid [delete]
+func (c *ZoofsController) Delete() {
+	idStr := c.Ctx.Input.Param(":uuid")
+	err := device.DelZoofs(idStr)
+	result := web.NewResponse(err, err)
+	c.Data["json"] = result
 	c.ServeJSON()
 }

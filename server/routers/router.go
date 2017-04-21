@@ -60,11 +60,11 @@ func init() {
 				&controllers.JournalsController{},
 			),
 		),
-		/*	beego.NSNamespace("/client",
+		beego.NSNamespace("/client",
 			beego.NSInclude(
 				&controllers.ClientController{},
 			),
-		),*/
+		),
 		beego.NSNamespace("/emergency",
 			beego.NSInclude(
 				&controllers.EmergencyController{},
@@ -83,6 +83,16 @@ func init() {
 		beego.NSNamespace("/zoofs",
 			beego.NSInclude(
 				&controllers.ZoofsController{},
+			),
+		),
+		beego.NSNamespace("/storage",
+			beego.NSInclude(
+				&controllers.StorageController{},
+			),
+		),
+		beego.NSNamespace("/cluster",
+			beego.NSInclude(
+				&controllers.ClustersController{},
 			),
 		),
 		/*
@@ -122,11 +132,7 @@ func init() {
 				),
 			),
 
-			beego.NSNamespace("/storage",
-				beego.NSInclude(
-					&controllers.StorageController{},
-				),
-			),
+
 
 			beego.NSNamespace("/threshhold",
 				beego.NSInclude(

@@ -2,7 +2,7 @@ package login
 
 import (
 	"aserver/controllers/web"
-	"aserver/models"
+	"aserver/models/util"
 	"github.com/astaxie/beego"
 
 	"net"
@@ -47,7 +47,7 @@ func (c *LoginController) Post() {
 func (c *LoginController) GetIfaces() {
 	info, err := net.InterfaceAddrs()
 	if err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 	}
 	ifaces := make([]string, 0)
 	for _, addr := range info {

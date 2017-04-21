@@ -1,57 +1,60 @@
-package models
+package device
 
 import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego/orm"
 )
 
-type Mail struct {
-	Id      int    `orm:"column(uid);auto" json:"uid"`
-	Address string `orm:"column(address);size(64);null" json:"address"`
-	Level   int    `orm:"column(level);null" json:"level"`
-	Ttl     int    `orm:"column(ttl);null" json:"ttl"`
+type Emergency struct {
+	Id             int       `orm:"column(uid);auto"`
+	Level          string    `orm:"column(level);size(50);null"`
+	Message        string    `orm:"column(message);size(200);null"`
+	ChineseMessage string    `orm:"column(chinese_message);size(200);null"`
+	UpdatedAt      time.Time `orm:"column(updated_at);type(datetime);null"`
+	CreatedAt      time.Time `orm:"column(created_at);type(datetime);null"`
+	Ip             string    `orm:"column(ip);size(64);null"`
+	Event          string    `orm:"column(event);size(64);null"`
+	Status         bool      `orm:"column(status);null"`
 }
 
-func (t *Mail) TableName() string {
-	return "mail"
+func (t *Emergency) TableName() string {
+	return "emergency"
 }
 
 func init() {
-	orm.RegisterModel(new(Mail))
+	orm.RegisterModel(new(Emergency))
 }
 
-// AddMail insert a new Mail into database and returns
+// AddEmergency insert a new Emergency into database and returns
 // last inserted Id on success.
-func AddMail(address, l, t string) (err error) {
+func AddEmergency(m *Emergency) (id int64, err error) {
 	o := orm.NewOrm()
-	var m Mail
-	m.Address = address
-	level, err := strconv.Atoi(l)
-	if err != nil {
-		return err
-	}
-	m.Level = level
-	ttl, err := strconv.Atoi(t)
-	if err != nil {
-		return err
-	}
-	m.Ttl = ttl
-
-	_, err = o.Insert(&m)
+	id, err = o.Insert(m)
 	return
 }
 
-// GetAllMail retrieves all Mail matches certain condition. Returns empty list if
+// GetEmergencyById retrieves Emergency by Id. Returns error if
+// Id doesn't exist
+func GetEmergencyById(id int) (v *Emergency, err error) {
+	o := orm.NewOrm()
+	v = &Emergency{Id: id}
+	if err = o.Read(v); err == nil {
+		return v, nil
+	}
+	return nil, err
+}
+
+// GetAllEmergency retrieves all Emergency matches certain condition. Returns empty list if
 // no records exist
-func GetAllMail(query map[string]string, fields []string, sortby []string, order []string,
+func GetAllEmergency(query map[string]string, fields []string, sortby []string, order []string,
 	offset int64, limit int64) (ml []interface{}, err error) {
 	o := orm.NewOrm()
-	qs := o.QueryTable(new(Mail))
+	qs := o.QueryTable(new(Emergency))
 	// query k=v
 	for k, v := range query {
 		// rewrite dot-notation to Object__Attribute
@@ -101,7 +104,7 @@ func GetAllMail(query map[string]string, fields []string, sortby []string, order
 		}
 	}
 
-	var l []Mail
+	var l []Emergency
 	qs = qs.OrderBy(sortFields...)
 	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
 		if len(fields) == 0 {
@@ -124,52 +127,34 @@ func GetAllMail(query map[string]string, fields []string, sortby []string, order
 	return nil, err
 }
 
-// UpdateMail updates Mail by Id and returns error if
+// UpdateEmergency updates Emergency by Id and returns error if
 // the record to be updated doesn't exist
-func UpdateMailById(id, l, ttl int) (err error) {
+func UpdateEmergencyById(m int) (err error) {
 	o := orm.NewOrm()
-	v := Mail{Id: id}
+	v := Emergency{Id: m}
 	// ascertain id exists in the database
-
 	if err = o.Read(&v); err == nil {
-		fmt.Println(v)
-		v.Level = l
-		v.Ttl = ttl
 		fmt.Printf("%+v", v)
-		if _, err = o.Update(&v); err == nil {
+		v.Status = true
+		if _, err = o.Update(&v); err != nil {
+			fmt.Printf("%+v", err)
+			return
 		}
 	}
-
 	return
 }
 
-// DeleteMail deletes Threshhold by Id and returns error if
+// DeleteEmergency deletes Emergency by Id and returns error if
 // the record to be deleted doesn't exist
-func DeleteMail(uid string) (err error) {
+func DeleteEmergency(id int) (err error) {
 	o := orm.NewOrm()
-
-	id, err := strconv.Atoi(uid)
-	if err != nil {
-		return err
-	}
-
-	v := Mail{Id: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		_, err = o.Delete(&Mail{Id: id})
-	}
-	return
-}
-
-/*
-	o := orm.NewOrm()
-	v := Mail{Id: m.Id}
+	v := Emergency{Id: id}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
-		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
+		if num, err = o.Delete(&Emergency{Id: id}); err == nil {
+			fmt.Println("Number of records deleted in database:", num)
 		}
 	}
 	return
-}*/
+}

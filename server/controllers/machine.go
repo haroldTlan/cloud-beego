@@ -2,7 +2,8 @@ package controllers
 
 import (
 	"aserver/controllers/web"
-	"aserver/models"
+	"aserver/models/device"
+	"aserver/models/util"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -36,21 +37,21 @@ func (c *MachineController) Post() {
 	ip := c.GetString("ip")
 	slotnr, err := c.GetInt("slotnr")
 	if err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 	}
 
 	devtype := c.GetString("devtype")
 	role := c.GetString("role")
 	cluster := c.GetString("cluster")
 
-	if err := models.AddMachine(ip, devtype, role, cluster, slotnr); err == nil {
+	if err := device.AddMachine(ip, devtype, role, cluster, slotnr); err == nil {
 		c.Ctx.Output.SetStatus(201)
 		result = web.NewResponse(err, err)
 	} else {
-		models.AddLog(err)
+		util.AddLog(err)
 		result = web.NewResponse(err, err)
 	}
-	c.Data["json"] = result
+	c.Data["json"] = &result
 	c.ServeJSON()
 }
 
@@ -101,7 +102,7 @@ func (c *MachineController) GetAll() {
 			if len(kv) != 2 {
 				errs := errors.New("Error: invalid query key/value pair")
 				c.Data["json"] = errs
-				models.AddLog(errs)
+				util.AddLog(errs)
 				c.ServeJSON()
 				return
 			}
@@ -110,7 +111,7 @@ func (c *MachineController) GetAll() {
 		}
 	}
 
-	l, err := models.GetAllMachine(query, fields, sortby, order, offset, limit)
+	l, err := device.GetAllMachine(query, fields, sortby, order, offset, limit)
 	result := web.NewResponse(l, err)
 	c.Data["json"] = &result
 	c.ServeJSON()
@@ -128,17 +129,17 @@ func (c *MachineController) Put() {
 	var result map[string]interface{}
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	v := models.Machine{Id: id}
+	v := device.Machine{Id: id}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := models.UpdateMachineById(&v); err == nil {
+		if err := device.UpdateMachineById(&v); err == nil {
 			result = web.NewResponse("Ok", err)
 		} else {
 			result = web.NewResponse(err, err)
-			models.AddLog(err)
+			util.AddLog(err)
 		}
 	} else {
 		result = web.NewResponse(err, err)
-		models.AddLog(err)
+		util.AddLog(err)
 	}
 	c.Data["json"] = result
 	c.ServeJSON()
@@ -153,7 +154,7 @@ func (c *MachineController) Put() {
 // @router /:uuid [delete]
 func (c *MachineController) Delete() {
 	idStr := c.Ctx.Input.Param(":uuid")
-	err := models.DeleteMachine(idStr)
+	err := device.DeleteMachine(idStr)
 	result := web.NewResponse(err, err)
 	c.Data["json"] = result
 	c.ServeJSON()

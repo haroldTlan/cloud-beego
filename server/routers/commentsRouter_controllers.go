@@ -6,6 +6,41 @@ import (
 
 func init() {
 
+	beego.GlobalControllerRouter["aserver/controllers:ClientController"] = append(beego.GlobalControllerRouter["aserver/controllers:ClientController"],
+		beego.ControllerComments{
+			Method: "Post",
+			Router: `/`,
+			AllowHTTPMethods: []string{"post"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:ClientController"] = append(beego.GlobalControllerRouter["aserver/controllers:ClientController"],
+		beego.ControllerComments{
+			Method: "Delete",
+			Router: `/:uuid`,
+			AllowHTTPMethods: []string{"delete"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:ClustersController"] = append(beego.GlobalControllerRouter["aserver/controllers:ClustersController"],
+		beego.ControllerComments{
+			Method: "Get",
+			Router: `/`,
+			AllowHTTPMethods: []string{"get"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:ClustersController"] = append(beego.GlobalControllerRouter["aserver/controllers:ClustersController"],
+		beego.ControllerComments{
+			Method: "Post",
+			Router: `/`,
+			AllowHTTPMethods: []string{"post"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:ClustersController"] = append(beego.GlobalControllerRouter["aserver/controllers:ClustersController"],
+		beego.ControllerComments{
+			Method: "Delete",
+			Router: `/:uuid`,
+			AllowHTTPMethods: []string{"delete"},
+			Params: nil})
+
 	beego.GlobalControllerRouter["aserver/controllers:EmergencyController"] = append(beego.GlobalControllerRouter["aserver/controllers:EmergencyController"],
 		beego.ControllerComments{
 			Method: "Post",
@@ -106,13 +141,6 @@ func init() {
 
 	beego.GlobalControllerRouter["aserver/controllers:MailController"] = append(beego.GlobalControllerRouter["aserver/controllers:MailController"],
 		beego.ControllerComments{
-			Method: "GetOne",
-			Router: `/:id`,
-			AllowHTTPMethods: []string{"get"},
-			Params: nil})
-
-	beego.GlobalControllerRouter["aserver/controllers:MailController"] = append(beego.GlobalControllerRouter["aserver/controllers:MailController"],
-		beego.ControllerComments{
 			Method: "GetAll",
 			Router: `/`,
 			AllowHTTPMethods: []string{"get"},
@@ -129,6 +157,20 @@ func init() {
 		beego.ControllerComments{
 			Method: "Delete",
 			Router: `/:id`,
+			AllowHTTPMethods: []string{"delete"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:StorageController"] = append(beego.GlobalControllerRouter["aserver/controllers:StorageController"],
+		beego.ControllerComments{
+			Method: "Post",
+			Router: `/`,
+			AllowHTTPMethods: []string{"post"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:StorageController"] = append(beego.GlobalControllerRouter["aserver/controllers:StorageController"],
+		beego.ControllerComments{
+			Method: "Delete",
+			Router: `/:uuid`,
 			AllowHTTPMethods: []string{"delete"},
 			Params: nil})
 
@@ -172,6 +214,13 @@ func init() {
 			Method: "Post",
 			Router: `/`,
 			AllowHTTPMethods: []string{"post"},
+			Params: nil})
+
+	beego.GlobalControllerRouter["aserver/controllers:ZoofsController"] = append(beego.GlobalControllerRouter["aserver/controllers:ZoofsController"],
+		beego.ControllerComments{
+			Method: "Delete",
+			Router: `/:uuid`,
+			AllowHTTPMethods: []string{"delete"},
 			Params: nil})
 
 }

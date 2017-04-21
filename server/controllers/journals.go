@@ -3,7 +3,6 @@ package controllers
 import (
 	"aserver/controllers/web"
 	"aserver/models"
-	"fmt"
 	"github.com/astaxie/beego"
 	"strconv"
 )
@@ -27,7 +26,6 @@ func (c *JournalsController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *JournalsController) Post() {
-	var err error
 	aColumns := []string{
 		"CreatedAt",
 		"Level",
@@ -37,11 +35,10 @@ func (c *JournalsController) Post() {
 
 	output, count, counts := models.Datatables(aColumns, c.Ctx.Input)
 	data := make(map[string]interface{}, count)
-	data["sEcho"], err = strconv.Atoi(c.Ctx.Input.Query("sEcho"))
+	data["sEcho"], _ = strconv.Atoi(c.Ctx.Input.Query("sEcho"))
 	data["iTotalRecords"] = counts
 	data["iTotalDisplayRecords"] = count
 	data["aaData"] = output
-	fmt.Println(err)
 	c.Data["json"] = data
 	c.ServeJSON()
 }

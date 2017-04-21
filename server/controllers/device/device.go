@@ -2,10 +2,9 @@ package device
 
 import (
 	"aserver/controllers/web"
-	"aserver/models"
 	"aserver/models/device"
+	"aserver/models/util"
 
-	_ "fmt"
 	"github.com/astaxie/beego"
 )
 
@@ -40,7 +39,7 @@ func (c *DeviceController) Post() {
 		c.Ctx.Output.SetStatus(201)
 		result = web.NewResponse("success", err)
 	} else {
-		models.AddLog(err)
+		util.AddLog(err)
 		result = web.NewResponse("error", err)
 	}
 	c.Data["json"] = &result
@@ -60,7 +59,7 @@ func (c *DeviceController) GetDevices() {
 	if err == nil {
 		result = web.NewResponse(data, err)
 	} else {
-		models.AddLog(err)
+		util.AddLog(err)
 		result = web.NewResponse("error", err)
 	}
 	c.Data["json"] = &result
@@ -78,7 +77,7 @@ func (c *DeviceController) Del() {
 	idStr := c.Ctx.Input.Param(":uuid")
 	err := device.DeleteDevice(idStr)
 	if err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 	}
 	result := web.NewResponse(err, err)
 	c.Data["json"] = &result

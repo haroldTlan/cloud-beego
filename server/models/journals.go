@@ -1,6 +1,7 @@
 package models
 
 import (
+	"aserver/models/device"
 	"fmt"
 	"github.com/astaxie/beego/context"
 	"github.com/astaxie/beego/orm"
@@ -25,14 +26,14 @@ type ResEmergency struct {
 func GetJournals() (es []ResEmergency, err error) {
 	o := orm.NewOrm()
 	es = make([]ResEmergency, 0)
-	emergencys := make([]Emergency, 0) //TODO emergency
-	if _, err = o.QueryTable(new(Emergency)).Filter("status", 0).All(&emergencys); err != nil {
+	emergencys := make([]device.Emergency, 0) //TODO emergency
+	if _, err = o.QueryTable(new(device.Emergency)).Filter("status", 0).All(&emergencys); err != nil {
 		return
 	}
 
 	for _, i := range emergencys {
-		var one Machine
-		if _, err = o.QueryTable(new(Machine)).Filter("ip", i.Ip).All(&one); err != nil {
+		var one device.Machine
+		if _, err = o.QueryTable(new(device.Machine)).Filter("ip", i.Ip).All(&one); err != nil {
 			return
 		}
 

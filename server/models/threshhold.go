@@ -125,14 +125,14 @@ func GetAllThreshhold(query map[string]string, fields []string, sortby []string,
 
 // UpdateThreshhold updates Threshhold by Id and returns error if
 // the record to be updated doesn't exist
-func UpdateThreshholdById(m *Threshhold) (err error) {
+func UpdateThreshholdById(uid, normal, warning int) (err error) {
 	o := orm.NewOrm()
-	v := Threshhold{Id: m.Id}
+	v := Threshhold{Id: uid}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
+		v.Normal = normal
+		v.Warning = warning
+		if _, err = o.Update(&v); err == nil {
 		}
 	}
 	return

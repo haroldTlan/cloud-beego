@@ -136,17 +136,24 @@ func (c *ThreshholdController) GetAll() {
 // @router /:id [put]
 func (c *ThreshholdController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	v := models.Threshhold{Id: id}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := models.UpdateThreshholdById(&v); err == nil {
-			c.Data["json"] = "OK"
-		} else {
-			c.Data["json"] = err.Error()
-		}
-	} else {
-		c.Data["json"] = err.Error()
+	uid, _ := strconv.Atoi(idStr)
+	normal, err := c.GetInt("normal")
+	if err != nil {
+		result := web.NewResponse(err, err)
+		c.Data["json"] = &result
+		c.ServeJSON()
+		return
 	}
+	warning, err := c.GetInt("warning")
+	if err != nil {
+		result := web.NewResponse(err, err)
+		c.Data["json"] = &result
+		c.ServeJSON()
+		return
+	}
+	err = models.UpdateThreshholdById(uid, normal, warning)
+	result := web.NewResponse(err, err)
+	c.Data["json"] = &result
 	c.ServeJSON()
 }
 

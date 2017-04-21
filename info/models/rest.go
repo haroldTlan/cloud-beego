@@ -24,9 +24,9 @@ func AddRest(ip string, rest Rest) {
 	AddInitiators(rest.Initiator, m.Uuid)
 	AddJournals(rest.Journal, m.Uuid)
 	AddDsus(rest.Dsu, m.Uuid)
-
 }
 
+//Each machine's disks from speedweb
 func AddDisks(disks []Disks, machineid string) (err error) {
 	o := orm.NewOrm()
 
@@ -72,9 +72,37 @@ func AddDisks(disks []Disks, machineid string) (err error) {
 	return nil
 }
 
+//Each machine's raids from speedweb
 func AddRaids(raids []Raids, machineid string) (err error) {
 	o := orm.NewOrm()
 
+	//when someone is out of raids
+	out := make(map[string]bool, 0)
+	var rs []Raids
+
+	//rs from databases
+	if _, err := o.QueryTable(new(Raids)).Filter("machineid", machineid).All(&rs); err != nil {
+		AddLog(err)
+	}
+
+	//Delete when some raids disappear
+	for _, r := range rs {
+		out[r.Uuid] = false
+		for _, now := range raids {
+			if r.Uuid == now.Uuid {
+				out[r.Uuid] = true
+			}
+		}
+	}
+	for k, v := range out {
+		if !v {
+			if _, err = o.QueryTable(new(Raids)).Filter("uuid", k).Delete(); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+
+	//Update or Insert
 	for _, raid := range raids {
 		raid.Machineid = machineid
 		if exist := o.QueryTable(new(Raids)).Filter("machineid", machineid).Filter("uuid", raid.Uuid).Exist(); exist {
@@ -90,8 +118,37 @@ func AddRaids(raids []Raids, machineid string) (err error) {
 	return nil
 }
 
+//Each machine's vols from speedweb
 func AddVolumes(vols []Volumes, machineid string) (err error) {
 	o := orm.NewOrm()
+
+	//when someone is out of vols
+	out := make(map[string]bool, 0)
+	var vs []Volumes
+
+	//vs from databases
+	if _, err := o.QueryTable(new(Volumes)).Filter("machineid", machineid).All(&vs); err != nil {
+		AddLog(err)
+	}
+
+	//Delete when some volumes disappear
+	for _, v := range vs {
+		out[v.Uuid] = false
+		for _, now := range vols {
+			if v.Uuid == now.Uuid {
+				out[v.Uuid] = true
+			}
+		}
+	}
+	for k, v := range out {
+		if !v {
+			if _, err = o.QueryTable(new(Volumes)).Filter("uuid", k).Delete(); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+
+	//Update or Insert
 	for _, vol := range vols {
 		vol.Machineid = machineid
 		if exist := o.QueryTable(new(Volumes)).Filter("machineid", machineid).Filter("uuid", vol.Uuid).Exist(); exist {
@@ -107,9 +164,37 @@ func AddVolumes(vols []Volumes, machineid string) (err error) {
 	return nil
 }
 
+//Each machine's initiators from speedweb
 func AddInitiators(inits []Inits, machineid string) (err error) {
 	o := orm.NewOrm()
 
+	//when someone is out of inits
+	out := make(map[string]bool, 0)
+	var is []Initiators
+
+	//is from databases
+	if _, err := o.QueryTable(new(Initiators)).Filter("machineid", machineid).All(&is); err != nil {
+		AddLog(err)
+	}
+
+	//Delete when some initiators disappear
+	for _, i := range is {
+		out[i.Wwn] = false
+		for _, now := range inits {
+			if i.Wwn == now.Wwn {
+				out[i.Wwn] = true
+			}
+		}
+	}
+	for k, v := range out {
+		if !v {
+			if _, err = o.QueryTable(new(Initiators)).Filter("wwn", k).Delete(); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+
+	//Update or Insert
 	for _, init := range inits {
 		var i Initiators
 		i.Portals = strings.Join(init.Portals, "*")
@@ -132,8 +217,37 @@ func AddInitiators(inits []Inits, machineid string) (err error) {
 	return nil
 }
 
+//Each machine's fs from speedweb
 func AddFs(fs []Fs, machineid string) (err error) {
 	o := orm.NewOrm()
+
+	//when someone is out of fs
+	out := make(map[string]bool, 0)
+	var files []Fs
+
+	//rs from databases
+	if _, err := o.QueryTable(new(Fs)).Filter("machineid", machineid).All(&files); err != nil {
+		AddLog(err)
+	}
+
+	//Delete when some disks disappear
+	for _, f := range files {
+		out[f.Uuid] = false
+		for _, now := range fs {
+			if f.Uuid == now.Uuid {
+				out[f.Uuid] = true
+			}
+		}
+	}
+	for k, v := range out {
+		if !v {
+			if _, err = o.QueryTable(new(Fs)).Filter("uuid", k).Delete(); err != nil {
+				AddLog(err)
+			}
+		}
+	}
+
+	//Update or Insert
 	for _, f := range fs {
 		f.Machineid = machineid
 		if exist := o.QueryTable(new(Fs)).Filter("machineid", machineid).Filter("uuid", f.Uuid).Exist(); exist {
@@ -151,6 +265,7 @@ func AddFs(fs []Fs, machineid string) (err error) {
 	return
 }
 
+//Each machine's journals from speedweb
 func AddJournals(js []Journals, machineid string) (err error) {
 	o := orm.NewOrm()
 
@@ -175,6 +290,7 @@ func AddJournals(js []Journals, machineid string) (err error) {
 	return nil
 }
 
+//Each machine's dsus from speedweb
 func AddDsus(d []Dsus, machineid string) (err error) {
 	o := orm.NewOrm()
 

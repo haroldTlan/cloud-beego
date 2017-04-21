@@ -2,9 +2,8 @@ package device
 
 import (
 	"aserver/controllers/web"
-	"aserver/models"
 	"aserver/models/device"
-	_ "fmt"
+	"aserver/models/util"
 	"github.com/astaxie/beego"
 )
 
@@ -30,7 +29,7 @@ func (c *StoreViewsController) GetStoreviews() {
 	if err == nil {
 		result = web.NewResponse(data, err)
 	} else {
-		models.AddLog(err)
+		util.AddLog(err)
 		result = web.NewResponse("error", err)
 	}
 	c.Data["json"] = &result

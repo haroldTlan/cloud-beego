@@ -1,25 +1,28 @@
 package models
 
 import (
-	/*"errors"
-	"fmt"
-	"reflect"
-	"regexp"
-	"strings"
-	"time"*/
+	"aserver/models/device"
 	"github.com/astaxie/beego/orm"
 	"strings"
 )
 
+type Dsus struct {
+	Location      string `orm:"column(location);size(255);pk" json:"location"`
+	SupportDiskNr int    `orm:"column(support_disk_nr)" json:"support_disk_nr"`
+	Machineid     string `orm:"column(machineid);size(255)" json:"machineid"`
+}
+
 type StoreViews struct {
-	RestDisks   []Disks    `json:"disks"`
-	RestRaids   []Raids    `json:"raids"`
-	RestVolumes []Volumes  `json:"volumes"`
-	RestFs      []Fs       `json:"filesystems"`
-	RestInits   []Inits    `json:"initiators"`
-	RestJours   []Journals `json:"journals"`
-	Uuid        string     `json:"uuid"`
-	Type        string     `json:"devtype"`
+	ResDsus     Dsus              `json:"dsus"`
+	RestDisks   []device.Disks    `json:"disks"`
+	RestRaids   []device.Raids    `json:"raids"`
+	RestVolumes []device.Volumes  `json:"volumes"`
+	RestFs      []device.Fs       `json:"filesystems"`
+	RestInits   []device.Inits    `json:"initiators"`
+	RestJours   []device.Journals `json:"journals"`
+	Uuid        string            `json:"uuid"`
+	Ip          string            `json:"ip"`
+	Type        string            `json:"devtype"`
 }
 
 func (t *StoreViews) TableName() string {
@@ -27,14 +30,14 @@ func (t *StoreViews) TableName() string {
 }
 
 func init() {
-	//orm.RegisterModel(new(Machine), new(Disks), new(Raids), new(Volumes), new(Initiators), new(Fs), new(Journals))
+	orm.RegisterModel(new(Dsus))
 }
 
 // RestApi get all storages's rest api. Returns empty list if
 // no records exist
 func RestApi() (storages []StoreViews, err error) {
 	o := orm.NewOrm()
-	var ones []Machine
+	var ones []device.Machine
 	storages = make([]StoreViews, 0)
 	if _, err = o.QueryTable("machine").Filter("devtype", "storage").Filter("status", 1).All(&ones); err != nil { //decide update or not
 		return
@@ -49,38 +52,48 @@ func RestApi() (storages []StoreViews, err error) {
 	return
 }
 
+//single machine
 func restApi(uuid string) (store StoreViews, err error) {
 	o := orm.NewOrm()
 
-	disks := make([]Disks, 0)
-	raids := make([]Raids, 0)
-	vols := make([]Volumes, 0)
-	initiators := make([]Initiators, 0)
-	inits := make([]Inits, 0)
-	fs := make([]Fs, 0)
-	jours := make([]Journals, 0)
+	var dsus Dsus
+	disks := make([]device.Disks, 0)
+	raids := make([]device.Raids, 0)
+	vols := make([]device.Volumes, 0)
+	initiators := make([]device.Initiators, 0)
+	inits := make([]device.Inits, 0)
+	fs := make([]device.Fs, 0)
+	jours := make([]device.Journals, 0)
 
-	if _, err = o.QueryTable(new(Disks)).Filter("machineid__exact", uuid).All(&disks); err != nil {
+	var m device.Machine
+	if _, err = o.QueryTable(new(device.Machine)).Filter("uuid__exact", uuid).All(&m); err != nil {
 		return
 	}
-	if _, err = o.QueryTable(new(Raids)).Filter("machineid__exact", uuid).All(&raids); err != nil {
+
+	if _, err = o.QueryTable(new(Dsus)).Filter("machineid__exact", uuid).All(&dsus); err != nil {
 		return
 	}
-	if _, err = o.QueryTable(new(Volumes)).Filter("machineid__exact", uuid).All(&vols); err != nil {
+	if _, err = o.QueryTable(new(device.Disks)).Filter("machineid__exact", uuid).All(&disks); err != nil {
 		return
 	}
-	if _, err = o.QueryTable(new(Fs)).Filter("machineid__exact", uuid).All(&fs); err != nil {
+	if _, err = o.QueryTable(new(device.Raids)).Filter("machineid__exact", uuid).All(&raids); err != nil {
 		return
 	}
-	if _, err = o.QueryTable(new(Journals)).Filter("machineid__exact", uuid).All(&jours); err != nil {
+	if _, err = o.QueryTable(new(device.Volumes)).Filter("machineid__exact", uuid).All(&vols); err != nil {
 		return
 	}
-	if _, err = o.QueryTable(new(Initiators)).Filter("machineid__exact", uuid).All(&initiators); err != nil {
+	if _, err = o.QueryTable(new(device.Fs)).Filter("machineid__exact", uuid).All(&fs); err != nil {
+		return
+	}
+	if _, err = o.QueryTable(new(device.Journals)).Filter("machineid__exact", uuid).All(&jours); err != nil {
+		return
+	}
+	if _, err = o.QueryTable(new(device.Initiators)).Filter("machineid__exact", uuid).All(&initiators); err != nil {
 		return
 	}
 
 	for _, init := range initiators {
-		var i Inits
+		var i device.Inits
 		i.Wwn = init.Wwn
 		i.Id = init.Id
 		i.Active = init.Active
@@ -90,6 +103,7 @@ func restApi(uuid string) (store StoreViews, err error) {
 		inits = append(inits, i)
 	}
 
+	store.ResDsus = dsus
 	store.RestDisks = disks
 	store.RestRaids = raids
 	store.RestVolumes = vols
@@ -97,6 +111,7 @@ func restApi(uuid string) (store StoreViews, err error) {
 	store.RestInits = inits
 	store.RestJours = jours
 	store.Uuid = uuid
+	store.Ip = m.Ip
 	store.Type = "storage"
 
 	return store, nil
