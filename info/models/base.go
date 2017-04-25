@@ -27,6 +27,9 @@ func InfoStat() {
 			dev.Info = append(dev.Info, info)
 			dev.Ip = info.Ip
 			if info.Dev == "storage" {
+				if sameDevice(dev.Ip) {
+					s.Exports = append(s.Exports, dev)
+				}
 				s.Storages = append(s.Storages, dev)
 			} else {
 				s.Exports = append(s.Exports, dev)
@@ -37,6 +40,8 @@ func InfoStat() {
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }
+
+func sameDevice()
 
 //set some value from KB to MB or ... Not Used
 func microAdjust(devInfo *StoreView) StoreView {
