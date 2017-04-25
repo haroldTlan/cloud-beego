@@ -148,24 +148,30 @@ func GetAllDevices() (devs []interface{}, err error) {
 		return
 	}
 	for _, i := range exports {
-		j := Exports{Export: i, Name: strings.Split(i.Clusterid, "cid")[1]}
-		/*	if i.Clusterid != "" {
-			i.Name = strings.Split(i.Clusterid, "cid")[1]
-		}*/
+		j := Exports{Export: i}
+		if i.Clusterid != "" {
+			j.Name = strings.Split(i.Clusterid, "cid")[1]
+		} else {
+			j.Name = ""
+		}
 		devs = append(devs, j)
 	}
 	for _, i := range storages {
-		j := Storages{Storage: i, Name: strings.Split(i.Clusterid, "cid")[1]}
-		/*	if i.Clusterid != "" {
-			i.Name = strings.Split(i.Clusterid, "cid")[1]
-		}*/
+		j := Storages{Storage: i}
+		if i.Clusterid != "" {
+			j.Name = strings.Split(i.Clusterid, "cid")[1]
+		} else {
+			j.Name = ""
+		}
 		devs = append(devs, j)
 	}
 	for _, i := range clients {
-		j := Clients{Client: i, Name: strings.Split(i.Clusterid, "cid")[1]}
-		/*	if i.Clusterid != "" {
-			i.Name = strings.Split(i.Clusterid, "cid")[1]
-		}*/
+		j := Clients{Client: i}
+		if i.Clusterid != "" {
+			j.Name = strings.Split(i.Clusterid, "cid")[1]
+		} else {
+			j.Name = ""
+		}
 		devs = append(devs, j)
 	}
 	return
