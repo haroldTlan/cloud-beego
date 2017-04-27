@@ -215,6 +215,9 @@ func publish(ip, typeVal string, val float64, d ...float64) {
 
 func mail(message string) {
 	o := orm.NewOrm()
+
+	AddLog(message)
+	fmt.Println(message)
 	var adds []Mail
 	mails := make([]string, 0)
 	if _, err := o.QueryTable("mail").All(&adds); err != nil {
@@ -223,6 +226,7 @@ func mail(message string) {
 	for _, val := range adds {
 		mails = append(mails, val.Address)
 	}
-	MailSending(mails, message)
-	fmt.Println(message)
+	if len(mails) > 0 {
+		MailSending(mails, message)
+	}
 }

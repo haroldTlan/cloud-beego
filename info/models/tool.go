@@ -51,8 +51,10 @@ func MailDaemon() {
 							}
 						}
 					}
+					if err == nil {
+						open = true
+					}
 
-					open = true
 				}
 				if s != nil {
 					if err := gomail.Send(s, m); err != nil {

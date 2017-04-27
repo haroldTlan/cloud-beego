@@ -4,6 +4,8 @@ import (
 	_ "fmt"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+
 	"math"
 	"runtime"
 	"time"
@@ -41,7 +43,12 @@ func InfoStat() {
 	}
 }
 
-func sameDevice()
+func sameDevice(ip string) (exist bool) {
+	o := orm.NewOrm()
+
+	exist = o.QueryTable(new(Machine)).Filter("ip", ip).Filter("devtype", "export").Exist()
+	return
+}
 
 //set some value from KB to MB or ... Not Used
 func microAdjust(devInfo *StoreView) StoreView {
