@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('/home/zonion/speedio')
+import rest,os
+
+def print_items(name, items):
+    nr = len(items)
+    items = ','.join(items)
+    print '%s:%s %s' % (name, nr, items)
+
+def disk_excute(detail,single,raid):
+    return [disk[single] for disk in detail if disk[single] and disk['raid']==raid ]
+
+def select(cditon, right, wrong):
+    if cditon > 0:
+        print "%s"%right
+    else:
+        print "%s"%wrong
+
+if __name__ == '__main__':
+    r = rest.rest()
+    o = r.devicestatus.query()
+    disks_e = o.get('disks', [])
+    raids = o.get('raids', [])
+    volumes = o.get('volumes', [])
+    fail = 0
+
+    for e in disks_e:
+        if e.values()[0] > 0:
+            fail = 1
+            break
+    print '[Failed info]:\n\n[Failed_disks]:%s' % fail
+    print '[Failed_disk_num]:%s' % len([' '  for e in disks_e if e.values()[0] >= 0])
+
+    locations = [e.keys()[0].split('.')[-1] for e in disks_e if e.values()[0] >= 0]
+    fdlc_right = '[Failed_disk_locations]:%s' % ','.join(sorted(locations))
+    select(len(locations),fdlc_right,'[Failed_disk_locations]:None')
+
+    print_items('[Failed_degraded_raids]',[e.keys()[0] for e in raids if e.values()[0] == 'degraded']) 
+    print_items('[Failed_raids]',[e.keys()[0] for e in raids if e.values()[0] == 'failed']) 
+    print_items('[Failed_volumes]',[e.keys()[0] for e in volumes if e.values()[0] == 'failed']) 
+
+    temp = o.get('temp', '')
+    if temp == '':
+        print '[High_temp]:0'
+    else:
+        print '[High_temp]:1 %s' % temp
+
+    port = {}
+    port.setdefault('eth0', os.popen('ethtool eth0 | grep Link | awk \'{print $3}\'').read())
+    port.setdefault('eth1', os.popen('ethtool eth1 | grep Link | awk \'{print $3}\'').read())
+
+    print '[Failed_port]:',
+    for it in port.values()[::-1]:
+        if 'yes' in it:
+            print '0',
+        else:
+            print '1',
+
+    disks = r.disk.list()
+    raids = r.raid.list()
+
+    select(len(raids), '\n\n[Raid info]:', '\n\n[Raid info]:None')
+        
+    for single in raids:
+        print "\nRaid%s\n[Raid_name]:%s"%(raids.index(single)+1,single['name'])
+        print "[Raid_status]:",single['health']
+        print "[Raid_level]:",single['level']
+        print "[Raid_free]:",str((single['cap_sector']/pow(1024,2)/2)-int(single['used_cap_sector']/pow(1024,2)/2))+"GB"
+
+        print "[Raid_disk_role]:",' '.join(disk_excute(disks,"role",single['name']))
+        print "[Raid_disk_location]:",' '.join(disk_excute(disks,"location",single['name']))
+        print "[Raid_disk_status]:",' '.join(disk_excute(disks,"health",single['name']))
+
+    select(len(disks), '\n\n[Disk info]:', '\n\n[Disk info]:None')
+
+    for single in disks:
+        print "\n\n[Disk_location]:%s"%(single['location'])
+#        print "[Disk_status]:",single['health']
+#        print "[Disk_role]:",single['role']
+
+        dr_right = "[Disk_raid]:%s"%single['raid']
+        select(len(single['raid']), dr_right, '[Disk_raid]: None')
+        
+#        print "[Disk_size]:",single['cap_sector']
+#        print "[Disk_id]:",single['id']
+
