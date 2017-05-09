@@ -1,4 +1,3 @@
-t
 #!/usr/bin/env python
 import select
 import subprocess as sub
@@ -24,13 +23,16 @@ import psutil
 #import network
 
 import commands
+import gnsq
+import struct
 
 __version__ = 'v1.0.0'
 
 class Response(mq.IOHandler):
-    def __init__(self):
+    def __init__(self,conn):
         self._sock = mq.rsp_socket('speedd')
         self._realtime = Realtime()
+	self.conn = conn
 
     @property
     def fd(self):
@@ -38,7 +40,9 @@ class Response(mq.IOHandler):
 
     def stat(self):
         self._realtime.stat()
-	os.system("echo '%s'> /home/monitor/statistics"%json.dumps(list(self._realtime)[-5:]))
+	self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
+	#os.system("echo '%s'> /home/monitor/statistics"%json.dumps(list(self._realtime)[-5:]))
+
 
     def handle_statistics(self, kv):
         if 'time' not in kv:
@@ -241,6 +245,25 @@ class Realtime(object):
 
     def _stat_ifaces_flow_dev(self):
         try:
+            r, w = 0, 0
+
+            wsum = psutil.net_io_counters().bytes_recv
+            rsum = psutil.net_io_counters().bytes_sent
+
+            interval = time.time() - self._timestamp
+            if self._network_rbytes <> 0:
+                r = rsum - self._network_rbytes
+            if self._network_wbytes <> 0:
+                w = wsum - self._network_wbytes
+            self._network_rbytes = rsum
+            self._network_wbytes = wsum
+            return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
+        except Exception as e:
+            print e
+            return 0,0
+
+    '''def _stat_ifaces_flow_dev(self):
+        try:
             rsum, wsum = 0, 0
             r, w = 0, 0
             rsum, wsum = self._dev()
@@ -253,7 +276,15 @@ class Realtime(object):
             self._network_wbytes = wsum
             return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
         except:
-            return 0,0
+            return 0,0'''
+
+    def get_ip_address(self,ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR
+            struct.pack('256s', ifname[:15])
+        )[20:24])
 
     def _dev(self):
         try:
@@ -289,9 +320,11 @@ class Realtime(object):
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
-
+	iface = self.get_ip_address("eth0")
         timestamp = self._format_nr(self._timestamp)
-        sample = {'cpu' : cpu,
+        sample = {'ip' : iface,
+                  'dev' : 'export',
+		  'cpu' : cpu,
                   'mem' : mem,
                   'temp': temp,
                   #'read_mb': r,
@@ -307,6 +340,7 @@ class Realtime(object):
                   'read_vol': rvol,
                   'write_vol': wvol
                   }
+	print nr,nw
         self._samples.append(sample)
 
     def __iter__(self):
@@ -321,7 +355,8 @@ class Realtime(object):
 class SpeedioDaemon(Daemon):
     def init(self):
         self._poller = mq.Poller()
-        self._rsp = Response()
+	conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.port)
+        self._rsp = Response(conn)
         self._poller.register(self._rsp)
 
     def _run(self):
