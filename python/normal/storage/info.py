@@ -22,6 +22,7 @@ import mq
 import psutil
 import gnsq
 import network
+import ethtool
 
 import commands
 import struct
@@ -380,6 +381,21 @@ class Realtime(object):
 	except:
             return 0,0
 
+    def _stat_gateway(self):
+        res = []
+        speeds = ''
+        ifaces = ethtool.get_active_devices()
+
+        for i in ifaces:
+            eth = os.popen("ethtool "+ i).readlines()
+            for j in eth:
+                if 'Speed' in j:
+                    speeds = j
+                    speed = filter(str.isdigit,j)
+                    if len(speed) > 0:
+                        res.append(dict(name=i,speed=int(speed)))
+        return res
+
     def stat(self):
         iface = ""
         if time.time() - self._timestamp < 1.0:
@@ -403,6 +419,7 @@ class Realtime(object):
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
+        gate = self._stat_gateway()
 	
 	#rest
         loc = self._rest_loc()
@@ -425,7 +442,8 @@ class Realtime(object):
 		  'cache_used': rd_u,
                   'read_vol': rvol,	#MB/s
                   'write_vol': wvol,	#MB/s
-		  'loc': loc
+		  'loc': loc,
+                  'gateway': gate
                   }
 	#print loc
 	print nw,nr
