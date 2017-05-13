@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	_ "fmt"
+	"fmt"
 )
 
 var (
@@ -19,12 +19,14 @@ var (
 
 func init() {
 	NsqInfos = make(map[string]StoreView)
+
 }
 
 //Handle infos from nsq consumer
 func handle(msg *consumer.Message) {
 	data := make([]StoreView, 0)
 	if err := json.Unmarshal(msg.Body, &data); err != nil { //get infos from machines
+		fmt.Println((string(msg.Body)))
 		AddLog(err)
 		msg.Fail()
 		return
@@ -32,6 +34,11 @@ func handle(msg *consumer.Message) {
 
 	if len(data) > 0 {
 		for _, val := range data {
+			//avoid array gate null
+			if val.Gate == nil {
+				val.Gate = make([]Gates, 0)
+			}
+
 			err := selectMachines(val.Ip)
 			if err != nil {
 				continue
@@ -86,10 +93,17 @@ func selectMachines(ip string) error {
 func ClearInfos() {
 	for {
 		o := orm.NewOrm()
-		for _, val := range NsqInfos {
+		for i, val := range NsqInfos {
 			exist := o.QueryTable(new(Machine)).Filter("status", true).Filter("ip", val.Ip).Exist()
 			if !exist {
 				delete(NsqInfos, val.Ip)
+			}
+
+			val.Online += -1
+			NsqInfos[i] = val
+			if val.Online == -5 {
+				fmt.Println("not running", val.Ip)
+				Mailing(val.Ip + " info.pyc not running")
 			}
 		}
 		time.Sleep(time.Second * 10)

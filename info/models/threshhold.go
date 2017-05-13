@@ -10,11 +10,11 @@ import (
 )
 
 type Threshhold struct {
-	Id      int    `orm:"column(uid);auto"`
-	Type    string `orm:"column(type);size(64);null"`
-	Dev     string `orm:"column(dev);size(64);null"`
-	Warning int    `orm:"column(warning);null"`
-	Normal  int    `orm:"column(normal);null"`
+	Id      int     `orm:"column(uid);auto"`
+	Type    string  `orm:"column(type);size(64);null"`
+	Dev     string  `orm:"column(dev);size(64);null"`
+	Warning float64 `orm:"column(warning);null"`
+	Normal  float64 `orm:"column(normal);null"`
 }
 
 func (t *Threshhold) TableName() string {

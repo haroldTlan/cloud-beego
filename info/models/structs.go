@@ -35,6 +35,13 @@ type StoreView struct {
 	W_Vol     float64 `json:"write_vol"`
 	R_Vol     float64 `json:"read_vol"`
 	Rest      `json:"loc"`
+	Gate      []Gates `json:"gateway"`
+	Online    int     `json:"online"`
+}
+
+type Gates struct {
+	Name  string `json:"name"`
+	Speed int    `json:"speed"`
 }
 
 type Df struct {

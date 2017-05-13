@@ -12,13 +12,15 @@ import (
 )
 
 var (
-	nsq_ip      = beego.AppConfig.String("nsq") + ":" + beego.AppConfig.String("nsq_port")
-	nsqdAddr    = flag.String("nsqd", nsq_ip, "nsqd http address")
-	maxInFlight = flag.Int("max-in-flight", 200, "Maximum amount of messages in flight to consume")
+	nsq_ip       = beego.AppConfig.String("nsq") + ":" + beego.AppConfig.String("nsq_port")
+	nsqdAddr     = flag.String("nsqd", nsq_ip, "nsqd http address")
+	maxInFlight  = flag.Int("max-in-flight", 200, "Maximum amount of messages in flight to consume")
+	registerIp   = beego.AppConfig.String("registerDB")
+	registerPort = beego.AppConfig.String("registerPort")
 )
 
 func init() {
-	orm.RegisterDataBase("default", "mysql", "root:passwd@tcp(127.0.0.1:3306)/speediodb?charset=utf8&loc=Local")
+	orm.RegisterDataBase("default", "mysql", "root:passwd@tcp("+registerIp+":"+registerPort+")/speediodb?charset=utf8&loc=Local")
 
 	//setting log, file in info's dir
 	logs.SetLogger(logs.AdapterFile, `{"filename":"/var/log/zoofsmonitor.log","daily":false,"maxdays":365,"level":3}`)

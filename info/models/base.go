@@ -30,13 +30,15 @@ func InfoStat() {
 			dev.Ip = info.Ip
 			if info.Dev == "storage" {
 				if sameDevice(dev.Ip) {
-					s.Exports = append(s.Exports, dev)
+					info.Dev = "export"
+					s.Exports = append(s.Exports, Device{Info: []StoreView{info}, Ip: info.Ip})
 				}
 				s.Storages = append(s.Storages, dev)
 			} else {
 				s.Exports = append(s.Exports, dev)
 			}
 		}
+		//fmt.Printf("%+v", s.Exports)
 		StatTopic.Publish(s)
 		s.CheckStand()
 		time.Sleep(time.Duration(interval) * time.Second)
