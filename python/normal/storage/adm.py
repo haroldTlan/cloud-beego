@@ -2092,12 +2092,12 @@ class XFS(Admin):
         self.raid_disks_nr = raid.raid_disks_nr
 
     def avail_mountpoints(self):
-        avails = config.nas.mount_dirs[:]
+        '''avails = config.nas.mount_dirs[:]
         for fs in XFS.all():
             avails.remove(fs.mountpoint)
         for fs in MonFS.all():
-            avails.remove(fs.mountpoint)
-        return avails
+            avails.remove(fs.mountpoint)'''
+        return [self.mountpoint]
 
     def mount(self, created=False):
         nodisk = glob.glob1('/dev', 'sd?3')[0]

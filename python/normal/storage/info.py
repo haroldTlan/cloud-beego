@@ -28,6 +28,7 @@ import commands
 import struct
 import rest
 import db
+from lm import LocationMapping
 
 __version__ = 'v2.0.0'
 
@@ -43,8 +44,19 @@ class Response(mq.IOHandler):
 
     def stat(self):
         self._realtime.stat()
+	res = {}
+	if len(list(self._realtime)) > 2:
+	    res.update(list(self._realtime)[-1:][0])
+	    res_before = list(self._realtime)[-1:][0]
+
+	    res['write_mb'] = (res['write_mb'] + res_before['write_mb'])/2.0
+	    res['read_mb'] = (res['read_mb'] + res_before['read_mb'])/2.0
+	    res['read_vol'] = (res['read_vol'] + res_before['read_vol'])/2.0
+	    res['write_vol'] = (res['write_vol'] + res_before['write_vol'])/2.0
         try:
-            self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
+	    print res['write_mb'], res['read_mb']
+            #self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
+            self.conn.publish('CloudInfo',json.dumps([res]))
 	except Exception as e:
 	    print e
 	#os.system("echo '%s'> /home/monitor/statistics"%json.dumps(list(self._realtime)[-5:]))
@@ -88,6 +100,8 @@ class Realtime(object):
 	journals = []
 	disks = []
 
+	lm = LocationMapping()
+	dsus = [{'location': dsu, 'support_disk_nr': nr} for dsu, nr in lm.dsu_list.items()]
 	disks = rest.list_disk()
 
 	for disk_db in db.Disk.select():
@@ -104,7 +118,7 @@ class Realtime(object):
 	jours = db.Journal.select()
 	for i in jours:
 	    journals.append(dict(message=i.message,created_at=int(i.created_at.strftime('%s')),level=i.level))
-	loc = dict(disk=disks,raid=raids,volume=volumes,initiator=initiators,filesystem=fs,journal=journals)
+	loc = dict(dsus=dsus,disk=disks,raid=raids,volume=volumes,initiator=initiators,filesystem=fs,journal=journals)
 	return loc
 	
     def _flow(self, path, prev):
@@ -139,33 +153,12 @@ class Realtime(object):
         except:
             return 0,0
 
-
     def _stat_ifaces_flow(self):
         try:
             rsum, wsum = 0, 0
             r, w = 0, 0
-	    
-	    wsum = psutil.net_io_counters().bytes_recv
-	    rsum = psutil.net_io_counters().bytes_sent
-
-            interval = time.time() - self._timestamp
-            if self._network_rbytes <> 0:
-                r = rsum - self._network_rbytes
-            if self._network_wbytes <> 0:
-                w = wsum - self._network_wbytes
-            self._network_rbytes = rsum
-            self._network_wbytes = wsum
-            return self._format_nr(r/interval/1024/1024/1024), self._format_nr(w/interval/1024/1024/1024)
-        except Exception as e:
-            print e
-            return 0,0
-
-    '''def _stat_ifaces_flow(self):
-        try:
-            rsum, wsum = 0, 0
-            r, w = 0, 0
             for iface in self._ifaces:
-                if 'bond' or 'br' in iface.name:
+                if 'bond'  in iface.name:
                     continue 
                 rpath = '/sys/class/net/%s/statistics/tx_bytes' % iface.name
                 rsum += float(open(rpath).read())
@@ -181,34 +174,9 @@ class Realtime(object):
             return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
         except Exception as e:
             print e
-            return 0,0'''
-
-    def _stat_devices_flow(self):
-        try:
-            rsum, wsum = 0, 0
-            r, w = 0, 0
-
-	    total = psutil.disk_io_counters(perdisk=True)
-	    for i in total:
-		if 'md' in i:
-		    rsum = total[i].read_bytes
-		    wsum = total[i].write_bytes
-
-	    interval = time.time() - self._timestamp
-
-	    if self._vol_rbytes <> 0:
-	        r = rsum - self._vol_rbytes
-	    if self._vol_wbytes <> 0:
-	        w = wsum - self._vol_wbytes
-	    self._vol_rbytes = rsum
-	    self._vol_wbytes = wsum
-	    
-            return self._format_nr(r/interval/1024/1024/1024), self._format_nr(w/interval/1024/1024/1024)
-        except Exception as e:
-            print e
             return 0,0
 
-    '''def _stat_devices_flow(self):
+    def _stat_devices_flow(self):
         try:
             rsum, wsum = 0, 0
             r, w = 0, 0
@@ -230,23 +198,33 @@ class Realtime(object):
             return self._format_nr(r/interval/1024), self._format_nr(w/interval/1024)
         except Exception as e:
             print e
-            return 0,0'''
+            return 0,0
 
-    ''''def _stat_devices_flow(self):
+    '''def _stat_devices_flow(self):
         try:
             rsum, wsum = 0, 0
             r, w = 0, 0
-            df = os.popen("iostat")
-            lines = df.readlines()
-            for i in lines:
-                if 'md' in i:
-                    rsum += float(i.split()[-4])
-                    wsum += float(i.split()[-3])
 
-            return self._format_nr(rsum/1024), self._format_nr(wsum/1024)
+            total = psutil.disk_io_counters(perdisk=True)
+            for i in total:
+                if 'md' in i:
+                    rsum = total[i].read_bytes
+                    wsum = total[i].write_bytes
+
+            interval = time.time() - self._timestamp
+
+            if self._vol_rbytes <> 0:
+                r = rsum - self._vol_rbytes
+            if self._vol_wbytes <> 0:
+                w = wsum - self._vol_wbytes
+            self._vol_rbytes = rsum
+            self._vol_wbytes = wsum
+
+            return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
         except Exception as e:
             print e
             return 0,0'''
+
 
     def _stat_cache(self):
         try:
@@ -360,7 +338,7 @@ class Realtime(object):
             return 0,0
 
     def get_ip_address(self):
-	INTERFACE = ['eth0','br0','eth1','br1']
+	INTERFACE = ['eth0','eth1']
 	ifaces = network.ifaces().values()
         for i in INTERFACE:
             for j in ifaces:
@@ -383,32 +361,36 @@ class Realtime(object):
 
     def _stat_gateway(self):
         res = []
-        speeds = ''
+	speeds = ''
         ifaces = ethtool.get_active_devices()
 
         for i in ifaces:
-            eth = os.popen("ethtool "+ i).readlines()
-            for j in eth:
-                if 'Speed' in j:
-                    speeds = j
-                    speed = filter(str.isdigit,j)
-                    if len(speed) > 0:
+	    eth = os.popen("ethtool "+ i).readlines()
+	    for j in eth:
+		if 'Speed' in j:
+		    speeds = j
+		    speed = filter(str.isdigit,j)
+		    if len(speed) > 0:
                         res.append(dict(name=i,speed=int(speed)))
+
         return res
 
     def stat(self):
         iface = ""
         if time.time() - self._timestamp < 1.0:
             return
-        self._timestamp = time.time()
+
 
         cpu = psutil.cpu_percent(0)
         vm = psutil.virtual_memory()
         temp = self._stat_temp()
         mem = vm.percent
         mem_total = vm.total
+
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
+        #_nr,_nw = self._stat_ifaces_flow()       #Yan 0.7 storage
+	#nr,nw = 0.7*_nr, 0.7*_nw
         nr,nw = self._stat_ifaces_flow()       # storage
 #        nr,nw = self._stat_ifaces_flow_dev()				#export
         rvol,wvol = self._stat_devices_flow()
@@ -419,11 +401,12 @@ class Realtime(object):
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
-        gate = self._stat_gateway()
+	gate = self._stat_gateway()
 	
 	#rest
         loc = self._rest_loc()
         timestamp = self._format_nr(self._timestamp)
+        self._timestamp = time.time()
         sample = {'ip' : iface,
 		  'dev' : 'storage',
 		  'cpu' : cpu,
@@ -443,12 +426,8 @@ class Realtime(object):
                   'read_vol': rvol,	#MB/s
                   'write_vol': wvol,	#MB/s
 		  'loc': loc,
-                  'gateway': gate
+		  'gateway': gate
                   }
-	#print loc
-	print nw,nr
-	print rvol,wvol
-
         self._samples.append(sample)
 
     def __iter__(self):

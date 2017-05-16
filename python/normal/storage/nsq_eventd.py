@@ -324,13 +324,16 @@ class EventDaemon(Daemon):
 	try:
     	    a=json.loads(result.replace("\n",""))
 	except:
-	    return
+	    pass
 	print a['event']
         o['event'] = a['event']
         o['ip'] = self.get_ip_address()
 	o['detail'] = a['detail']
 	o['result'] = a['status']
-        result = json.dumps(o)
+	try:
+            result = json.dumps(o)
+	except:
+	    pass
         print 'send json: %s' % result
         self.conn.publish('CloudEvent', str(result))
 

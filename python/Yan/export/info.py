@@ -198,6 +198,16 @@ class Realtime(object):
                 result.append(self._stat_df_temp(i,"var"))
   	return result
 
+    def _stat_gateway(self):
+	res = []
+	ifaces = ["eth0","eth1"]
+	gateway = psutil.net_if_stats()
+	for i in ifaces:
+	    if gateway[i].isup and gateway[i].duplex!=0:
+		res.append(dict(name=i,speed=gateway[i].speed))
+	
+	return res
+		
     def _stat_df_temp(self,line,name):
         val = [val for val in line.split(" ") if val]
         tmp_name = name
@@ -308,6 +318,8 @@ class Realtime(object):
         temp = self._stat_temp()
 
         mem = self._format_nr(float(vm.used)/vm.total*100)
+        mem_total = vm.total
+
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
 #        nr,nw = self._stat_ifaces_flow()        storage
@@ -320,27 +332,30 @@ class Realtime(object):
 	#Yan
 	df.append(self._stat_weed_cpu())
 	df.append(self._stat_weed_mem())
+	gate = self._stat_gateway()
 	iface = self.get_ip_address("eth0")
         timestamp = self._format_nr(self._timestamp)
         sample = {'ip' : iface,
                   'dev' : 'export',
 		  'cpu' : cpu,
                   'mem' : mem,
+                  'mem_total' : mem_total,
                   'temp': temp,
                   #'read_mb': r,
                   #'write_mb': w,
                   #'fread_mb': fr,
                   #'fwrite_mb': fw,
-                  'read_mb': nr, 	#nread
+                  'read_mb': nr, 	#nread KB/s
                   'write_mb': nw,
                   'timestamp': timestamp,
                   'df':df,
 		  'cache_total': rd_t,
 		  'cache_used': rd_u,
                   'read_vol': rvol,
-                  'write_vol': wvol
+                  'write_vol': wvol,
+		  'gateway': gate
                   }
-	print nr,nw
+	print gate
         self._samples.append(sample)
 
     def __iter__(self):

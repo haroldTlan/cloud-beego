@@ -31,6 +31,9 @@ def getPid(process):
     infos = [i.split()[1] for i in info.split("\n")]
     return infos
 
+def reboot():
+    os.system("reboot")
+
 def killPid():
     os.system("python /home/monitor/nsq_eventd.py restart")
     menu = ["reader"]
@@ -47,4 +50,4 @@ def killPid():
 if __name__ == '__main__':
     args = parser.parse_args()
     pre(args.ip)
-    killPid()
+    reboot()

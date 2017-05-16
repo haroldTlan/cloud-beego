@@ -62,16 +62,32 @@ def cmd(events):
         if events['event'] == 'cmd.client.add':
             result = commands.getoutput("zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/"%events['status'])
 	    if result == '':
+		os.system("echo 'zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/' >> /etc/rc.step3"%events['status'])
+		os.system("service samba restart")
+		os.system("chmod 777 -R /mnt/zoofs")
 		pub('cmd.client.add',True,"success")
 	    else:
 		pub('cmd.client.add',False, ','.join(result.split('\n')))
 
         elif events['event'] == 'cmd.client.remove':
 	    result = commands.getoutput("umount zoofs")
+	    os.system("sed -i '/zoofsmount/d' /etc/rc.step3")
 	    if result == '':
 		pub('cmd.client.remove',True,"success")
 	    else:
 		pub('cmd.client.add',False, ','.join(result.split('\n')))
+
+        elif events['event'] == 'cmd.storage.build':
+	    level = events['status'].split("*")[0]
+	    loc = events['status'].split("*")[1]
+
+	    status, detail = addDev(level, loc, mountpoint)
+	    pub('cmd.storage.build', status, detail)
+
+        elif events['event'] == 'cmd.storage.remove':
+	    delete_all()
+	    pub('cmd.storage.remove', False, "success")
+
 
 def pub(event, status,detail):
     back = {}
@@ -79,7 +95,6 @@ def pub(event, status,detail):
     back['status']=status
     back['detail']=detail.replace("'","")
 
-    print json.dumps(back).replace("'","\"")
     os.system("echo \'%s\' >> /home/monitor/rpc.log"%json.dumps(back).replace("'","\""))
 
 r = nsq.Reader(message_handler=handler,
