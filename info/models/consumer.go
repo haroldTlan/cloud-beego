@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"github.com/crackcomm/nsqueue/consumer"
 	"os"
@@ -19,7 +20,6 @@ var (
 
 func init() {
 	NsqInfos = make(map[string]StoreView)
-
 }
 
 //Handle infos from nsq consumer
@@ -99,10 +99,10 @@ func ClearInfos() {
 				delete(NsqInfos, val.Ip)
 			}
 
+			checkTime, _ := beego.AppConfig.Int("checkpyc")
 			val.Online += -1
 			NsqInfos[i] = val
-			if val.Online == -5 {
-				fmt.Println("not running", val.Ip)
+			if val.Online == checkTime {
 				Mailing(val.Ip + " info.pyc not running")
 			}
 		}

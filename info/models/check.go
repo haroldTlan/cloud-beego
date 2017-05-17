@@ -20,7 +20,7 @@ func init() {
 	m = make(map[string]map[string]map[string]int, 0)
 }
 
-//use ansible to get devices infomations then check
+//use nsq to get devices infomations then check
 func (s *Statistics) CheckStand() {
 	o := orm.NewOrm()
 
