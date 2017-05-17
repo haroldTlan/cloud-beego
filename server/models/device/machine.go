@@ -3,9 +3,9 @@ package device
 import (
 	"aserver/models/util"
 	"errors"
-	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,9 +34,17 @@ func init() {
 
 // AddMachine insert a new Machine into database and returns
 // last inserted Id on success.
-func AddMachine(ip, devtype, role, cluster string, slotnr int) (err error) {
+func AddMachine(ip, devtype, slotnr string) (err error) {
 	o := orm.NewOrm()
 
+	// int
+	slot, err := strconv.Atoi(slotnr)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	//validate
 	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
 		err = errors.New("not validate IP address")
 		util.AddLog(err)
@@ -49,7 +57,7 @@ func AddMachine(ip, devtype, role, cluster string, slotnr int) (err error) {
 		err = errors.New("devtype type not set")
 		util.AddLog(err)
 		return
-	} else if devtype != "client" && devtype != "storage" && devtype != "export" {
+	} else if !_devtype[devtype] {
 		err = errors.New("not validate devtype")
 		util.AddLog(err)
 		return
@@ -61,11 +69,9 @@ func AddMachine(ip, devtype, role, cluster string, slotnr int) (err error) {
 	m.Uuid = uuid
 	m.Ip = ip
 	m.Devtype = devtype
-	m.Slotnr = slotnr
+	m.Slotnr = slot
 	m.Created = time.Now()
-	m.Status = true
-	//m.Role = role
-	//.Clusterid = cluster
+	m.Status = false
 
 	if _, err = o.Insert(&m); err != nil {
 		util.AddLog(err)
@@ -154,25 +160,11 @@ func GetAllMachine(query map[string]string, fields []string, sortby []string, or
 	return nil, err
 }
 
-// UpdateMachine updates Machine by Id and returns error if
-// the record to be updated doesn't exist
-func UpdateMachineById(m *Machine) (err error) {
-	o := orm.NewOrm()
-	v := Machine{Id: m.Id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
-		}
-	}
-	return
-}
-
 // DeleteMachine deletes Machine by Id and returns error if
 // the record to be deleted doesn't exist
 func DeleteMachine(uuid string) (err error) {
 	o := orm.NewOrm()
+
 	// ascertain id exists in the database
 	if exist := o.QueryTable("machine").Filter("uuid", uuid).Exist(); exist {
 		if _, err = o.QueryTable(new(Disks)).Filter("machineid", uuid).Delete(); err != nil {

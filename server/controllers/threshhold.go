@@ -137,14 +137,14 @@ func (c *ThreshholdController) GetAll() {
 func (c *ThreshholdController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	uid, _ := strconv.Atoi(idStr)
-	normal, err := c.GetInt("normal")
+	normal, err := c.GetFloat("normal")
 	if err != nil {
 		result := web.NewResponse(err, err)
 		c.Data["json"] = &result
 		c.ServeJSON()
 		return
 	}
-	warning, err := c.GetInt("warning")
+	warning, err := c.GetFloat("warning")
 	if err != nil {
 		result := web.NewResponse(err, err)
 		c.Data["json"] = &result

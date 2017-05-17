@@ -2,10 +2,12 @@ package models
 
 import (
 	"aserver/models/device"
+	"aserver/models/util"
 	"github.com/astaxie/beego/orm"
 	"strings"
 )
 
+//slotnr
 type Dsus struct {
 	Location      string `orm:"column(location);size(255);pk" json:"location"`
 	SupportDiskNr int    `orm:"column(support_disk_nr)" json:"support_disk_nr"`
@@ -38,13 +40,16 @@ func init() {
 func RestApi() (storages []StoreViews, err error) {
 	o := orm.NewOrm()
 	var ones []device.Machine
+
 	storages = make([]StoreViews, 0)
-	if _, err = o.QueryTable("machine").Filter("devtype", "storage").Filter("status", 1).All(&ones); err != nil { //decide update or not
+	if _, err = o.QueryTable("machine").Filter("devtype", "storage").Filter("status", 1).All(&ones); err != nil {
+		util.AddLog(err)
 		return
 	}
 	for _, val := range ones {
 		storage, err := restApi(val.Uuid)
 		if err != nil {
+			util.AddLog(err)
 			return storages, err
 		}
 		storages = append(storages, storage)
@@ -67,28 +72,36 @@ func restApi(uuid string) (store StoreViews, err error) {
 
 	var m device.Machine
 	if _, err = o.QueryTable(new(device.Machine)).Filter("uuid__exact", uuid).All(&m); err != nil {
+		util.AddLog(err)
 		return
 	}
 
 	if _, err = o.QueryTable(new(Dsus)).Filter("machineid__exact", uuid).All(&dsus); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Disks)).Filter("machineid__exact", uuid).All(&disks); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Raids)).Filter("machineid__exact", uuid).All(&raids); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Volumes)).Filter("machineid__exact", uuid).All(&vols); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Fs)).Filter("machineid__exact", uuid).All(&fs); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Journals)).Filter("machineid__exact", uuid).All(&jours); err != nil {
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable(new(device.Initiators)).Filter("machineid__exact", uuid).All(&initiators); err != nil {
+		util.AddLog(err)
 		return
 	}
 

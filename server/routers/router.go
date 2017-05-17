@@ -9,6 +9,7 @@ package routers
 
 import (
 	"aserver/controllers"
+	"aserver/controllers/ansible"
 	"aserver/controllers/device"
 	"aserver/controllers/login"
 
@@ -18,58 +19,79 @@ import (
 func init() {
 	ns := beego.NewNamespace("/api",
 
+		//can be deleted or TODO
 		beego.NSNamespace("/sessions",
 			beego.NSInclude(
 				&login.LoginController{},
 			),
 		),
 
+		//network interface
 		beego.NSNamespace("/ifaces",
 			beego.NSInclude(
-				&login.LoginController{},
+				&login.IfaceController{},
 			),
 		),
+
+		//can be deleted or TODO
 		beego.NSNamespace("/systeminfo",
 			beego.NSInclude(
 				&login.SystemInfoController{},
 			),
 		),
+
+		//include storage, export, client
 		beego.NSNamespace("/devices",
 			beego.NSInclude(
 				&device.DeviceController{},
 			),
 		),
 
+		//overviews information
 		beego.NSNamespace("/storeviews",
 			beego.NSInclude(
 				&device.StoreViewsController{},
 			),
 		),
+
+		//monitored machine
 		beego.NSNamespace("/machines",
 			beego.NSInclude(
 				&controllers.MachineController{},
 			),
 		),
+
+		//All machine's detail
+		//不应该这样做，一次性拿所有的detail推到前台，是个很傻帽的做法
+		//无奈前端是sb, me too, 不想说了
 		beego.NSNamespace("/machinedetails",
 			beego.NSInclude(
 				&controllers.MachineDetailsController{},
 			),
 		),
+
+		//local journals, just emergency, TODO  setting journals
 		beego.NSNamespace("/journals",
 			beego.NSInclude(
 				&controllers.JournalsController{},
 			),
 		),
+
+		//client's setting, like create, remove
 		beego.NSNamespace("/client",
 			beego.NSInclude(
 				&controllers.ClientController{},
 			),
 		),
+
+		//emergency's setting, like
 		beego.NSNamespace("/emergency",
 			beego.NSInclude(
 				&controllers.EmergencyController{},
 			),
 		),
+
+		//--------------------------------------->
 		beego.NSNamespace("/threshhold",
 			beego.NSInclude(
 				&controllers.ThreshholdController{},
@@ -93,6 +115,11 @@ func init() {
 		beego.NSNamespace("/cluster",
 			beego.NSInclude(
 				&controllers.ClustersController{},
+			),
+		),
+		beego.NSNamespace("/ansible",
+			beego.NSInclude(
+				&ansible.AnsibleController{},
 			),
 		),
 		/*

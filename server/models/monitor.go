@@ -3,15 +3,20 @@ package models
 import (
 	"aserver/models/device"
 	"aserver/models/nsq"
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"net"
 	"time"
 )
 
+var (
+	PingExport  = beego.AppConfig.String("pExport")
+	PingStorage = beego.AppConfig.String("pStorage")
+)
+
 const (
 	//monitor = "9000" //Yan
-	monitor     = "8081" //TVT
-	storages    = "8081"
+
 	exportName  = "export"
 	storageName = "storage"
 )
@@ -28,14 +33,14 @@ func Outline() {
 			}
 			for _, val := range ones {
 				if val.Devtype == exportName {
-					err := checkSpeedio(val.Ip, monitor)
+					err := checkSpeedio(val.Ip, PingExport)
 					if err == nil {
-						Response(val.Ip, monitor, exportName)
+						Response(val.Ip, PingExport, exportName)
 					}
 				} else {
-					err := checkSpeedio(val.Ip, storages)
+					err := checkSpeedio(val.Ip, PingStorage)
 					if err == nil {
-						Response(val.Ip, storages, storageName)
+						Response(val.Ip, PingStorage, storageName)
 					}
 				}
 
@@ -56,14 +61,14 @@ func Online() {
 			}
 			for _, val := range ones {
 				if val.Devtype == exportName {
-					err := checkSpeedio(val.Ip, monitor)
+					err := checkSpeedio(val.Ip, PingExport)
 					if err != nil {
-						noResponse(val.Ip, monitor, exportName)
+						noResponse(val.Ip, PingExport, exportName)
 					}
 				} else {
-					err := checkSpeedio(val.Ip, storages)
+					err := checkSpeedio(val.Ip, PingStorage)
 					if err != nil {
-						noResponse(val.Ip, storages, storageName)
+						noResponse(val.Ip, PingStorage, storageName)
 					}
 				}
 			}

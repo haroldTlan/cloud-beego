@@ -1,12 +1,7 @@
 package login
 
 import (
-	"aserver/controllers/web"
-	"aserver/models/util"
 	"github.com/astaxie/beego"
-
-	"net"
-	"strings"
 )
 
 type Session struct {
@@ -21,7 +16,6 @@ type LoginController struct {
 // URLMapping ...
 func (c *LoginController) URLMapping() {
 	c.Mapping("Post", c.Post)
-	c.Mapping("GetIfaces", c.GetIfaces)
 }
 
 // Post ...
@@ -32,28 +26,8 @@ func (c *LoginController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *LoginController) Post() {
-	var sess Session
-	sess.Id = 111
-	c.Data["json"] = &sess
-	c.ServeJSON()
-}
+	sess := Session{Id: 111}
 
-// GetIfaces ...
-// @Title Get Ifaces
-// @Description get Ifaces
-// @Success 200 {object} models.Session
-// @Failure 403
-// @router / [get]
-func (c *LoginController) GetIfaces() {
-	info, err := net.InterfaceAddrs()
-	if err != nil {
-		util.AddLog(err)
-	}
-	ifaces := make([]string, 0)
-	for _, addr := range info {
-		ifaces = append(ifaces, strings.Split(addr.String(), "/")[0])
-	}
-	result := web.NewResponse(ifaces, err)
-	c.Data["json"] = &result
+	c.Data["json"] = &sess
 	c.ServeJSON()
 }

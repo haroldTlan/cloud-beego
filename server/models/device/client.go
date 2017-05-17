@@ -2,6 +2,8 @@ package device
 
 import (
 	"aserver/models/nsq"
+	"aserver/models/util"
+
 	"errors"
 	"github.com/astaxie/beego/orm"
 	"time"
@@ -31,16 +33,19 @@ func init() {
 	orm.RegisterModel(new(Client))
 }
 
+//POST create one client
 func AddClient(ip string) (err error) {
 	o := orm.NewOrm()
 
 	var c Client
 	if _, err = o.QueryTable("client").Filter("ip", ip).All(&c); err != nil { //TODO
+		util.AddLog(err)
 		return
 	}
 
 	if c.Status {
 		err = errors.New("client has been opened")
+		util.AddLog(err)
 		return
 	}
 
@@ -58,6 +63,7 @@ func AddClient(ip string) (err error) {
 	return
 }
 
+//POST delete one client
 func DelClient(cid string) (err error) {
 	o := orm.NewOrm()
 

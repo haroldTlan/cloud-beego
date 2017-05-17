@@ -2,10 +2,10 @@ package models
 
 import (
 	"aserver/models/device"
-	"fmt"
+	"aserver/models/util"
 	"github.com/astaxie/beego/context"
 	"github.com/astaxie/beego/orm"
-	_ "net/http"
+
 	"strconv"
 	"time"
 )
@@ -28,12 +28,14 @@ func GetJournals() (es []ResEmergency, err error) {
 	es = make([]ResEmergency, 0)
 	emergencys := make([]device.Emergency, 0) //TODO emergency
 	if _, err = o.QueryTable(new(device.Emergency)).Filter("status", 0).All(&emergencys); err != nil {
+		util.AddLog(err)
 		return
 	}
 
 	for _, i := range emergencys {
 		var one device.Machine
 		if _, err = o.QueryTable(new(device.Machine)).Filter("ip", i.Ip).All(&one); err != nil {
+			util.AddLog(err)
 			return
 		}
 
@@ -62,7 +64,7 @@ func Datatables(aColumns []string, Input *context.BeegoInput) ([][]interface{}, 
 	iDisplayStart, _ := strconv.Atoi(Input.Query("iDisplayStart"))
 	iDisplayLength, _ := strconv.Atoi(Input.Query("iDisplayLength"))
 
-	//  * Filtering  快速过滤器
+	//  * Filtering  快速过滤器 TODO
 	cond := orm.NewCondition()
 	if len(Input.Query("sSearch")) > 0 {
 		for i := 0; i < len(aColumns); i++ {
@@ -82,7 +84,6 @@ func Datatables(aColumns []string, Input *context.BeegoInput) ([][]interface{}, 
 	for i, m := range maps {
 		for _, v := range aColumns {
 			if v == "CreatedAt" {
-				fmt.Printf("%+v", m[v])
 				output[i] = append(output[i], m[v].(time.Time).Format("2006-01-02 15:04:05"))
 			} else {
 				output[i] = append(output[i], m[v])

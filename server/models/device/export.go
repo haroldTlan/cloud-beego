@@ -142,7 +142,7 @@ func volExport(export string, hosts []string, l int) (err error) {
 
 func zoofsInsert(ip string, expands []string) (err error) {
 	err = InsertExports(ip, true)
-	AddMachine(ip, "export", "export", "master", 24)
+	AddMachine(ip, "export", "24")
 	if err != nil {
 		util.AddLog(err)
 		return
@@ -157,7 +157,7 @@ func zoofsInsert(ip string, expands []string) (err error) {
 			util.AddLog(err)
 			return err
 		}
-		AddMachine(val, "storage", "storage", "storage", 24)
+		AddMachine(val, "storage", "24")
 	}
 	return
 }

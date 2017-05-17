@@ -51,6 +51,7 @@ func AddMail(address, l, t string) (err error) {
 func GetAllMail(query map[string]string, fields []string, sortby []string, order []string,
 	offset int64, limit int64) (ml []interface{}, err error) {
 	o := orm.NewOrm()
+	ml = make([]interface{}, 0)
 	qs := o.QueryTable(new(Mail))
 	// query k=v
 	for k, v := range query {
@@ -121,7 +122,7 @@ func GetAllMail(query map[string]string, fields []string, sortby []string, order
 		}
 		return ml, nil
 	}
-	return nil, err
+	return ml, err
 }
 
 // UpdateMail updates Mail by Id and returns error if

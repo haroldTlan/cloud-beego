@@ -3,7 +3,6 @@ package device
 import (
 	"aserver/controllers/web"
 	"aserver/models/device"
-	"aserver/models/util"
 
 	"github.com/astaxie/beego"
 )
@@ -33,15 +32,11 @@ func (c *DeviceController) Post() {
 	version := c.GetString("version")
 	devtype := c.GetString("devtype")
 	size := c.GetString("size")
-	cluster := c.GetString("cluster")
 
-	if err := device.AddDevice(ip, version, size, devtype, cluster); err == nil {
-		c.Ctx.Output.SetStatus(201)
-		result = web.NewResponse("success", err)
-	} else {
-		util.AddLog(err)
-		result = web.NewResponse("error", err)
-	}
+	err := device.AddDevice(ip, version, size, devtype)
+	result = web.NewResponse(err, err)
+	//c.Ctx.Output.SetStatus(201)
+
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
@@ -53,15 +48,9 @@ func (c *DeviceController) Post() {
 // @Failure 403
 // @router / [get]
 func (c *DeviceController) GetDevices() {
-	//get all devices
-	var result map[string]interface{}
 	data, err := device.GetAllDevices()
-	if err == nil {
-		result = web.NewResponse(data, err)
-	} else {
-		util.AddLog(err)
-		result = web.NewResponse("error", err)
-	}
+	result := web.NewResponse(data, err)
+
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
@@ -76,10 +65,8 @@ func (c *DeviceController) GetDevices() {
 func (c *DeviceController) Del() {
 	idStr := c.Ctx.Input.Param(":uuid")
 	err := device.DeleteDevice(idStr)
-	if err != nil {
-		util.AddLog(err)
-	}
 	result := web.NewResponse(err, err)
+
 	c.Data["json"] = &result
 	c.ServeJSON()
 }

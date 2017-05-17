@@ -3,7 +3,6 @@ package device
 import (
 	"aserver/controllers/web"
 	"aserver/models/device"
-	"aserver/models/util"
 	"github.com/astaxie/beego"
 )
 
@@ -24,14 +23,9 @@ func (c *StoreViewsController) URLMapping() {
 // @Failure 403
 // @router / [get]
 func (c *StoreViewsController) GetStoreviews() {
-	var result map[string]interface{}
 	data, err := device.GetOverViews()
-	if err == nil {
-		result = web.NewResponse(data, err)
-	} else {
-		util.AddLog(err)
-		result = web.NewResponse("error", err)
-	}
+	result := web.NewResponse(data, err)
+
 	c.Data["json"] = &result
 	c.ServeJSON()
 }

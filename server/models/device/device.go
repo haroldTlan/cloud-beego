@@ -1,7 +1,7 @@
 package device
 
 import (
-	"aserver/models"
+	"aserver/models/util"
 	"errors"
 	_ "fmt"
 	"github.com/astaxie/beego/orm"
@@ -10,90 +10,121 @@ import (
 	"time"
 )
 
+type Exports struct {
+	Export
+	Name string `json:"cluster"`
+}
+
+type Storages struct {
+	Storage
+	Name string `json:"cluster"`
+}
+
+type Clients struct {
+	Client
+	Name string `json:"cluster"`
+}
+
+var (
+	_devtype = map[string]bool{
+		"export": true, "storage": true, "client": true,
+	}
+)
+
 // AddDevice insert a new Device(export, storage, client)
 // into database and returns errs
-func AddDevice(ip, version, size, devtype, cluster string) (err error) {
+func AddDevice(ip, version, size, devtype string) (err error) {
 	o := orm.NewOrm()
 
-	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
-		err = errors.New("not validate IP address")
-		models.AddLog(err)
+	if !_devtype[devtype] {
+		err = errors.New("not validate devtype")
+		util.AddLog(err)
 		return
 	}
 
-	var base models.ExportInit
-	uran := models.Urandom()
+	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
+		err = errors.New("not validate IP address")
+		util.AddLog(err)
+		return
+	}
+
+	var base ExportInit
+	uran := util.Urandom()
 	uuid := uran + "zip" + strings.Join(strings.Split(ip, "."), "")
 	base.Uuid = uuid
 	base.Ip = ip
 	base.Version = version
 	base.Size = size
-	base.Status = true
+	base.Status = false
 	base.Devtype = devtype
 	base.Created = time.Now()
-	//base.Clusterid = cluster
 
 	if devtype == "export" {
-		var one models.Export
+		var one Export
 		num, err := o.QueryTable("export").Filter("ip", ip).All(&one)
 		if err != nil {
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 		if num == 0 {
 			one.ExportInit = base
 			if _, err = o.Insert(&one); err != nil {
-				models.AddLog(err)
+				util.AddLog(err)
 				return err
 			}
 		} else {
 			err = errors.New("Ip address already exits")
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 
 	} else if devtype == "storage" {
-		var one models.Storage
+		var one Storage
 		num, err := o.QueryTable("storage").Filter("ip", ip).All(&one)
 		if err != nil {
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 		if num == 0 {
 			one.ExportInit = base
 			if _, err = o.Insert(&one); err != nil {
-				models.AddLog(err)
+				util.AddLog(err)
 				return err
 			}
 		} else {
 			err = errors.New("Ip address already exits")
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 
 	} else if devtype == "client" {
-		var one models.Client
+		var one Client
 		num, err := o.QueryTable("client").Filter("ip", ip).All(&one)
 		if err != nil {
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 		if num == 0 {
 			one.ExportInit = base
 			if _, err = o.Insert(&one); err != nil {
-				models.AddLog(err)
+				util.AddLog(err)
 				return err
 			}
 		} else {
 			err = errors.New("Ip address already exits")
-			models.AddLog(err)
+			util.AddLog(err)
 			return err
 		}
 
 	} else {
 		err = errors.New("devtype type not set")
-		models.AddLog(err)
+		util.AddLog(err)
 		return err
+	}
+
+	//when add devices and then monitor
+	if devtype != "client" {
+		AddMachine(ip, devtype, "24")
 	}
 
 	return nil
@@ -104,29 +135,68 @@ func AddDevice(ip, version, size, devtype, cluster string) (err error) {
 func GetAllDevices() (devs []interface{}, err error) {
 	o := orm.NewOrm()
 	devs = make([]interface{}, 0)
-	var exports []models.Export
+
+	var exports []Export
 	if _, err = o.QueryTable("export").All(&exports); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
-	var storages []models.Storage
+
+	var storages []Storage
 	if _, err = o.QueryTable("storage").All(&storages); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
-	var clients []models.Client
+
+	var clients []Client
 	if _, err = o.QueryTable("client").All(&clients); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
+
 	for _, i := range exports {
-		devs = append(devs, i)
+		j := Exports{Export: i}
+		if i.Clusterid != "" {
+			name := strings.Split(i.Clusterid, "cid")
+			if len(name) == 2 {
+				j.Name = name[1]
+			} else {
+				j.Name = ""
+			}
+		} else {
+			j.Name = ""
+		}
+		devs = append(devs, j)
 	}
+
 	for _, i := range storages {
-		devs = append(devs, i)
+		j := Storages{Storage: i}
+		if i.Clusterid != "" {
+			name := strings.Split(i.Clusterid, "cid")
+			if len(name) == 2 {
+				j.Name = name[1]
+			} else {
+				j.Name = ""
+			}
+		} else {
+			j.Name = ""
+		}
+		devs = append(devs, j)
 	}
+
 	for _, i := range clients {
-		devs = append(devs, i)
+		j := Clients{Client: i}
+		if i.Clusterid != "" {
+			name := strings.Split(i.Clusterid, "cid")
+			if len(name) == 2 {
+				j.Name = name[1]
+			} else {
+				j.Name = ""
+			}
+		} else {
+			j.Name = ""
+		}
+		devs = append(devs, j)
 	}
 	return
 }
@@ -137,15 +207,15 @@ func GetAllDevices() (devs []interface{}, err error) {
 func DeleteDevice(uuid string) (err error) {
 	o := orm.NewOrm()
 	if _, err = o.QueryTable("export").Filter("uuid", uuid).Delete(); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable("storage").Filter("uuid", uuid).Delete(); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
 	if _, err = o.QueryTable("client").Filter("uuid", uuid).Delete(); err != nil {
-		models.AddLog(err)
+		util.AddLog(err)
 		return
 	}
 	return nil

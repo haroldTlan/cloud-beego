@@ -24,6 +24,7 @@ type ResCluster struct {
 	Zoofs   bool                `json:"zoofs"`
 	Store   bool                `json:"store"`
 	Devices map[string][]string `json:"devices"`
+	Device  []Dev               `json:"device"`
 	Created time.Time           `json:"created"`
 }
 
@@ -61,12 +62,14 @@ func DelClusters(clusterid string) (err error) {
 		}
 	}
 
-	var s Storage
-	if num, err := o.QueryTable(new(Storage)).Filter("clusterid", clusterid).All(&s); err == nil && num > 0 {
-		s.Clusterid = uuid
-		if _, err = o.Update(&s); err != nil {
-			util.AddLog(err)
-			return err
+	var storage []Storage
+	if num, err := o.QueryTable(new(Storage)).Filter("clusterid", clusterid).All(&storage); err == nil && num > 0 {
+		for _, s := range storage {
+			s.Clusterid = uuid
+			if _, err = o.Update(&s); err != nil {
+				util.AddLog(err)
+				return err
+			}
 		}
 	}
 
@@ -99,7 +102,7 @@ func GetClusters() (res []ResCluster, err error) {
 
 	for _, c := range clus {
 		var clu ResCluster
-		clu.Devices, err = _device(c.Uuid)
+		clu.Devices, clu.Device, err = _device(c.Uuid)
 		clu.Cid = c.Cid
 		clu.Uuid = c.Uuid
 		clu.Zoofs = c.Zoofs
@@ -111,9 +114,17 @@ func GetClusters() (res []ResCluster, err error) {
 	return
 }
 
-func _device(uuid string) (devs map[string][]string, err error) {
-	o := orm.NewOrm()
+type Dev struct {
+	Ip      string `json:"ip"`
+	Uuid    string `json:"uuid"`
+	Status  bool   `json:"status"`
+	Devtype string `json:"devtype"`
+}
 
+func _device(uuid string) (devs map[string][]string, dev []Dev, err error) {
+	o := orm.NewOrm()
+	var d Dev
+	var m Machine
 	devs = make(map[string][]string, 0)
 
 	var e []Export
@@ -129,13 +140,38 @@ func _device(uuid string) (devs map[string][]string, err error) {
 	if _, err = o.QueryTable(new(Client)).Filter("clusterid", uuid).All(&c); err != nil {
 		return
 	}
+
 	for _, i := range e {
+		if err = o.QueryTable(new(Machine)).Filter("ip", i.Ip).One(&m); err != nil {
+			return
+		}
+		d.Ip = i.Ip
+		d.Uuid = i.Uuid
+		d.Status = m.Status
+		d.Devtype = "export"
+		dev = append(dev, d)
 		devs["export"] = append(devs["export"], i.Ip)
 	}
 	for _, i := range s {
+		if err = o.QueryTable(new(Machine)).Filter("ip", i.Ip).One(&m); err != nil {
+			return
+		}
+		d.Ip = i.Ip
+		d.Uuid = i.Uuid
+		d.Status = m.Status
+		d.Devtype = "storage"
+		dev = append(dev, d)
 		devs["storage"] = append(devs["storage"], i.Ip)
 	}
 	for _, i := range c {
+		if err = o.QueryTable(new(Machine)).Filter("ip", i.Ip).One(&m); err != nil {
+			return
+		}
+		d.Ip = i.Ip
+		d.Uuid = i.Uuid
+		d.Status = m.Status
+		d.Devtype = "client"
+		dev = append(dev, d)
 		devs["client"] = append(devs["client"], i.Ip)
 	}
 	return

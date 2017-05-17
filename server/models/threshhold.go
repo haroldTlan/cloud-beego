@@ -10,12 +10,12 @@ import (
 )
 
 type Threshhold struct {
-	Id      int    `orm:"column(uid);auto" json:"uid"`
-	Dev     string `orm:"column(dev);size(64)" json:"dev"`
-	Type    string `orm:"column(type);size(64)" json:"type"`
-	Warning int    `orm:"column(warning)" json:"warning"`
-	Normal  int    `orm:"column(normal)" json:"normal"`
-	Name    string `orm:"column(name);size(64)" json:"name"`
+	Id      int     `orm:"column(uid);auto" json:"uid"`
+	Dev     string  `orm:"column(dev);size(64)" json:"dev"`
+	Type    string  `orm:"column(type);size(64)" json:"type"`
+	Warning float64 `orm:"column(warning)" json:"warning"`
+	Normal  float64 `orm:"column(normal)" json:"normal"`
+	Name    string  `orm:"column(name);size(64)" json:"name"`
 }
 
 func (t *Threshhold) TableName() string {
@@ -125,13 +125,14 @@ func GetAllThreshhold(query map[string]string, fields []string, sortby []string,
 
 // UpdateThreshhold updates Threshhold by Id and returns error if
 // the record to be updated doesn't exist
-func UpdateThreshholdById(uid, normal, warning int) (err error) {
+func UpdateThreshholdById(uid int, normal, warning float64) (err error) {
 	o := orm.NewOrm()
 	v := Threshhold{Id: uid}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		v.Normal = normal
 		v.Warning = warning
+		fmt.Println(v)
 		if _, err = o.Update(&v); err == nil {
 		}
 	}

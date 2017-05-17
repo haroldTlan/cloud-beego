@@ -106,13 +106,6 @@ func init() {
 
 	beego.GlobalControllerRouter["aserver/controllers:MachineController"] = append(beego.GlobalControllerRouter["aserver/controllers:MachineController"],
 		beego.ControllerComments{
-			Method: "Put",
-			Router: `/:id`,
-			AllowHTTPMethods: []string{"put"},
-			Params: nil})
-
-	beego.GlobalControllerRouter["aserver/controllers:MachineController"] = append(beego.GlobalControllerRouter["aserver/controllers:MachineController"],
-		beego.ControllerComments{
 			Method: "Delete",
 			Router: `/:uuid`,
 			AllowHTTPMethods: []string{"delete"},

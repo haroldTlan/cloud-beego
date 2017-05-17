@@ -4,9 +4,7 @@ import (
 	"aserver/controllers/web"
 	"aserver/models/device"
 	"aserver/models/util"
-	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/astaxie/beego"
@@ -21,7 +19,6 @@ type MachineController struct {
 func (c *MachineController) URLMapping() {
 	c.Mapping("Post", c.Post)
 	c.Mapping("GetAll", c.GetAll)
-	c.Mapping("Put", c.Put)
 	c.Mapping("Delete", c.Delete)
 }
 
@@ -35,22 +32,11 @@ func (c *MachineController) URLMapping() {
 func (c *MachineController) Post() {
 	var result map[string]interface{}
 	ip := c.GetString("ip")
-	slotnr, err := c.GetInt("slotnr")
-	if err != nil {
-		util.AddLog(err)
-	}
-
+	slotnr := c.GetString("slotnr")
 	devtype := c.GetString("devtype")
-	role := c.GetString("role")
-	cluster := c.GetString("cluster")
 
-	if err := device.AddMachine(ip, devtype, role, cluster, slotnr); err == nil {
-		c.Ctx.Output.SetStatus(201)
-		result = web.NewResponse(err, err)
-	} else {
-		util.AddLog(err)
-		result = web.NewResponse(err, err)
-	}
+	err := device.AddMachine(ip, devtype, slotnr)
+	result = web.NewResponse(err, err)
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
@@ -72,7 +58,7 @@ func (c *MachineController) GetAll() {
 	var sortby []string
 	var order []string
 	var query = make(map[string]string)
-	var limit int64 = 10
+	var limit int64 = 30
 	var offset int64
 
 	// fields: col1,col2,entity.col3
@@ -114,34 +100,6 @@ func (c *MachineController) GetAll() {
 	l, err := device.GetAllMachine(query, fields, sortby, order, offset, limit)
 	result := web.NewResponse(l, err)
 	c.Data["json"] = &result
-	c.ServeJSON()
-}
-
-// Put ...
-// @Title Put
-// @Description update the Machine
-// @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Machine	true		"body for Machine content"
-// @Success 200 {object} models.Machine
-// @Failure 403 :id is not int
-// @router /:id [put]
-func (c *MachineController) Put() {
-	var result map[string]interface{}
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	v := device.Machine{Id: id}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := device.UpdateMachineById(&v); err == nil {
-			result = web.NewResponse("Ok", err)
-		} else {
-			result = web.NewResponse(err, err)
-			util.AddLog(err)
-		}
-	} else {
-		result = web.NewResponse(err, err)
-		util.AddLog(err)
-	}
-	c.Data["json"] = result
 	c.ServeJSON()
 }
 
