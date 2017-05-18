@@ -5,7 +5,6 @@ import (
 	"github.com/astaxie/beego"
 
 	"aserver/models/ansible"
-	"fmt"
 	_ "strings"
 )
 
@@ -36,7 +35,6 @@ func (c *AnsibleController) Post() {
 	//ansible gateway -m command -a "service packetbeat start"
 
 	ansible.Active(act)
-	fmt.Println(act)
 	result := web.NewResponse(err, err)
 	c.Data["json"] = &result
 	c.ServeJSON()

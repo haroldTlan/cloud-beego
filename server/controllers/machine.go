@@ -30,13 +30,12 @@ func (c *MachineController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *MachineController) Post() {
-	var result map[string]interface{}
 	ip := c.GetString("ip")
 	slotnr := c.GetString("slotnr")
 	devtype := c.GetString("devtype")
 
 	err := device.AddMachine(ip, devtype, slotnr)
-	result = web.NewResponse(err, err)
+	result := web.NewResponse(err, err)
 	c.Data["json"] = &result
 	c.ServeJSON()
 }

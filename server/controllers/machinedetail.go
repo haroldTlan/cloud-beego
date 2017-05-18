@@ -4,7 +4,6 @@ import (
 	"aserver/controllers/web"
 	"aserver/models"
 	"github.com/astaxie/beego"
-	"time"
 )
 
 // MachineDetailsController operations for Journals
@@ -29,18 +28,5 @@ func (c *MachineDetailsController) Get() {
 	result := web.NewResponse(rest, err)
 
 	c.Data["json"] = &result
-	c.ServeJSON()
-
-}
-
-// Post ...
-// @Title Post
-// @Description create details
-// @Success 201 {int} models.Details
-// @Failure 403 body is empty
-// @router / [post]
-func (c *MachineDetailsController) Post() {
-	time.Sleep(3 * time.Second)
-	c.Data["json"] = 111
 	c.ServeJSON()
 }

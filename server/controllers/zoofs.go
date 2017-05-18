@@ -27,6 +27,7 @@ func (c *ZoofsController) URLMapping() {
 func (c *ZoofsController) Post() {
 	cid := c.GetString("uuid") //uuid
 	level, err := c.GetInt("level")
+
 	if err != nil {
 		result := web.NewResponse(err.Error(), err)
 		c.Data["json"] = &result

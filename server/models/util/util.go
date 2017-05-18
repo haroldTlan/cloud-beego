@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"github.com/astaxie/beego/logs"
 	"os"
@@ -30,7 +29,7 @@ func AddLog(err interface{}, v ...interface{}) {
 
 func JudgeIp(ip string) (err error) {
 	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
-		err = errors.New("not validate IP address")
+		err = fmt.Errorf("not validate IP address")
 		AddLog(err)
 		return
 	}

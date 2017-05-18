@@ -37,14 +37,14 @@ func init() {
 func AddMachine(ip, devtype, slotnr string) (err error) {
 	o := orm.NewOrm()
 
-	// int
+	//whether numbers
 	slot, err := strconv.Atoi(slotnr)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	//validate
+	//whether validate
 	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", ip); !m {
 		err = errors.New("not validate IP address")
 		util.AddLog(err)

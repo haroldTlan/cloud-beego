@@ -41,7 +41,6 @@ func (c *ClustersController) Get() {
 // @router / [post]
 func (c *ClustersController) Post() {
 	clu, err := c.GetInt("cluster")
-
 	if err != nil {
 		result := web.NewResponse(err.Error(), err)
 		c.Data["json"] = &result
@@ -51,10 +50,8 @@ func (c *ClustersController) Post() {
 
 	e := c.GetString("export") //All is ip
 	s := c.GetString("storage")
-	client := c.GetString("client")
-	err = device.AddClusters(clu, e, s, client)
+	err = device.AddClusters(clu, e, s)
 	result := web.NewResponse(err, err)
-
 	c.Data["json"] = &result
 	c.ServeJSON()
 }

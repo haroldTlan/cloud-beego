@@ -118,13 +118,6 @@ func init() {
 			AllowHTTPMethods: []string{"get"},
 			Params: nil})
 
-	beego.GlobalControllerRouter["aserver/controllers:MachineDetailsController"] = append(beego.GlobalControllerRouter["aserver/controllers:MachineDetailsController"],
-		beego.ControllerComments{
-			Method: "Post",
-			Router: `/`,
-			AllowHTTPMethods: []string{"post"},
-			Params: nil})
-
 	beego.GlobalControllerRouter["aserver/controllers:MailController"] = append(beego.GlobalControllerRouter["aserver/controllers:MailController"],
 		beego.ControllerComments{
 			Method: "Post",

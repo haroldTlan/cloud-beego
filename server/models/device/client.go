@@ -5,7 +5,9 @@ import (
 	"aserver/models/util"
 
 	"errors"
+	_ "fmt"
 	"github.com/astaxie/beego/orm"
+	"strings"
 	"time"
 )
 
@@ -34,69 +36,113 @@ func init() {
 }
 
 //POST create one client
-func AddClient(ip string) (err error) {
+func AddClient(ip string, cid string) (err error) {
 	o := orm.NewOrm()
 
 	var c Client
-	if _, err = o.QueryTable("client").Filter("ip", ip).All(&c); err != nil { //TODO
+	var export string
+	num, err := o.QueryTable(new(Client)).Filter("ip", ip).All(&c)
+	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	if c.Status {
-		err = errors.New("client has been opened")
-		util.AddLog(err)
-		return
-	}
-
-	var devs map[string][]string
-	clus, _ := GetClusters()
-	for _, clu := range clus {
-		if c.Clusterid == clu.Uuid {
-			devs = clu.Devices
+	//whether in use
+	if num == 0 {
+		addClient(ip, cid)
+	} else {
+		if c.Status {
+			err = errors.New("client is in use")
+			util.AddLog(err)
+			return
 		}
 	}
 
-	export := devs["export"][0]
+	//get cluster's infos
+	clus, err := GetClustersByCid(cid)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
 
-	nsq.NsqRequest("cmd.client.add", ip, export, "storages")
+	for _, dev := range clus.Device {
+		if dev.Devtype == "export" {
+			export = dev.Ip
+		}
+	}
+
+	if err = util.JudgeIp(export); err == nil {
+		nsq.NsqRequest("cmd.client.add", ip, export, "storages")
+	} else {
+		util.AddLog(err)
+		return
+	}
+	return
+}
+
+func addClient(ip, cid string) (err error) {
+	o := orm.NewOrm()
+
+	var one Client
+	uran := util.Urandom()
+	uuid := uran + "zip" + strings.Join(strings.Split(ip, "."), "")
+	one.Uuid = uuid
+	one.Ip = ip
+	one.Version = "ZS2000"
+	one.Size = "4U"
+	one.Status = false
+	one.Devtype = "client"
+	one.Created = time.Now()
+	one.Clusterid = cid
+
+	if _, err = o.Insert(&one); err != nil {
+		util.AddLog(err)
+		return err
+	}
 	return
 }
 
 //POST delete one client
+/*
 func DelClient(cid string) (err error) {
 	o := orm.NewOrm()
 
-	export, client, storages := _GetZoofs(cid)
+	export, storages := _GetZoofs(cid)
 
 	var e Export
 	o.QueryTable(new(Export)).Filter("ip", export).All(&e)
-	nsq.NsqRequest("cmd.client.remove", client, "true", "storages")
+	//nsq.NsqRequest("cmd.client.remove", client, "true", "storages")
 	for _, host := range storages {
 		nsq.NsqRequest("cmd.storage.remove", host, "true", "storages")
 	}
 	DelZoofs(e.Uuid) //export's uuid
 
 	return
-}
+}*/
 
 //POST delete one client
-/*func DelClient(cid string) (err error) {
-	var devs map[string][]string
-	clus, _ := GetClusters()
-	for _, clu := range clus {
-		if cid == clu.Uuid {
-			devs = clu.Devices
-		}
+func DelClient(ip string) (err error) {
+	o := orm.NewOrm()
+
+	//whether vaild Ip
+	if err = util.JudgeIp(ip); err != nil {
+		util.AddLog(err)
+		return
 	}
 
-	for key, val := range devs {
-		if key == "client" {
-			for _, c := range val {
-				nsq.NsqRequest("cmd.client.remove", c, "true", "storages")
-			}
-		}
+	//whether in use
+	var c Client
+	if _, err = o.QueryTable(new(Client)).Filter("ip", ip).All(&c); err != nil {
+		util.AddLog(err)
+		return
 	}
 
+	if !c.Status {
+		err = errors.New("client is not in use ")
+		util.AddLog(err)
+		return
+	}
+
+	nsq.NsqRequest("cmd.client.remove", ip, "true", "storages")
 	return
-}*/
+}

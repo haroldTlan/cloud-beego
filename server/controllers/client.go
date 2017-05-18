@@ -26,8 +26,9 @@ func (c *ClientController) URLMapping() {
 // @router / [post]
 func (c *ClientController) Post() {
 	ip := c.GetString("ip")
+	cid := c.GetString("cid")
 
-	err := device.AddClient(ip)
+	err := device.AddClient(ip, cid)
 	result := web.NewResponse(err, err)
 	c.Data["json"] = &result
 	c.ServeJSON()

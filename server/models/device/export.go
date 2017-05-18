@@ -162,7 +162,7 @@ func zoofsInsert(ip string, expands []string) (err error) {
 	return
 }
 
-func _GetZoofs(cid string) (export, client string, storage []string) {
+func _GetZoofs(cid string) (export string, storage []string) {
 	var devs map[string][]string
 
 	clus, _ := GetClusters()
@@ -175,7 +175,6 @@ func _GetZoofs(cid string) (export, client string, storage []string) {
 	fmt.Println(clus)
 	export = devs["export"][0]
 	storage = devs["storage"]
-	client = devs["client"][0]
 
 	return
 }
@@ -184,7 +183,7 @@ func _GetZoofs(cid string) (export, client string, storage []string) {
 func Zoofs(clusterid string, l int) (err error) {
 	o := orm.NewOrm()
 
-	export, client, expands := _GetZoofs(clusterid)
+	export, expands := _GetZoofs(clusterid)
 
 	if err = judge(export, expands, l); err != nil {
 		util.AddLog(err)
@@ -226,7 +225,7 @@ func Zoofs(clusterid string, l int) (err error) {
 		}
 	}
 
-	AddClient(client)
+	//AddClient(client)
 
 	/*var c Client
 	num, err = o.QueryTable(new(Client)).Filter("ip", client).All(&c)

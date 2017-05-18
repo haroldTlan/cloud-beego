@@ -25,6 +25,8 @@ type ResEmergency struct {
 
 func GetJournals() (es []ResEmergency, err error) {
 	o := orm.NewOrm()
+
+	//when nothing
 	es = make([]ResEmergency, 0)
 	emergencys := make([]device.Emergency, 0) //TODO emergency
 	if _, err = o.QueryTable(new(device.Emergency)).Filter("status", 0).All(&emergencys); err != nil {

@@ -134,10 +134,8 @@ func UpdateEmergencyById(m int) (err error) {
 	v := Emergency{Id: m}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
-		fmt.Printf("%+v", v)
 		v.Status = true
 		if _, err = o.Update(&v); err != nil {
-			fmt.Printf("%+v", err)
 			return
 		}
 	}

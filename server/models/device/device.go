@@ -12,7 +12,7 @@ import (
 
 type Exports struct {
 	Export
-	Name string `json:"cluster"`
+	Name string `json:"cluster"` //use string because when cid did not exist, use "" not 0
 }
 
 type Storages struct {
@@ -124,7 +124,10 @@ func AddDevice(ip, version, size, devtype string) (err error) {
 
 	//when add devices and then monitor
 	if devtype != "client" {
-		AddMachine(ip, devtype, "24")
+		if err := AddMachine(ip, devtype, "24"); err != nil {
+			util.AddLog(err)
+		}
+
 	}
 
 	return nil
