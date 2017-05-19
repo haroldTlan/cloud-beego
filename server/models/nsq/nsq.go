@@ -13,6 +13,23 @@ type Ping struct {
 	Status string `json:"status"`
 }
 
+type SettingNsq struct {
+	Event  string `json:"event"`
+	Ip     string `json:"ip"`
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+type StorageNsq struct {
+	Event string `json:"event"`
+	Ip    string `json:"ip"`
+	Loc   string `json:"loc"`
+	Mount string `json:"mountpoint"`
+	Level int    `json:"level"`
+	Count int    `json:"count"`
+	//Status     string `json:"status"`
+}
+
 var (
 	nsq_ip = beego.AppConfig.String("nsq") + ":" + beego.AppConfig.String("nsq_pub_port")
 )
@@ -21,6 +38,10 @@ func NsqInit() {
 	go func() {
 		producer.Connect(nsq_ip)
 	}()
+}
+
+func NewNsqRequest(topic string, msg interface{}) {
+	producer.PublishJSONAsync(topic, msg, nil)
 }
 
 func NsqRequest(event, ip, status, topic string) {

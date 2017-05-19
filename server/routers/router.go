@@ -40,7 +40,7 @@ func init() {
 			),
 		),
 
-		//include storage, export, client
+		//storage, export, client's getting, create, remove
 		beego.NSNamespace("/devices",
 			beego.NSInclude(
 				&device.DeviceController{},
@@ -77,13 +77,6 @@ func init() {
 			),
 		),
 
-		//client's setting, like create, remove
-		beego.NSNamespace("/client",
-			beego.NSInclude(
-				&controllers.ClientController{},
-			),
-		),
-
 		//emergency's setting, like
 		beego.NSNamespace("/emergency",
 			beego.NSInclude(
@@ -91,32 +84,48 @@ func init() {
 			),
 		),
 
-		//--------------------------------------->
+		//hard-code some value and setting thresshhold
 		beego.NSNamespace("/threshhold",
 			beego.NSInclude(
 				&controllers.ThreshholdController{},
 			),
 		),
+
+		//mails setting
 		beego.NSNamespace("/mail",
 			beego.NSInclude(
 				&controllers.MailController{},
 			),
 		),
-		beego.NSNamespace("/zoofs",
-			beego.NSInclude(
-				&controllers.ZoofsController{},
-			),
-		),
-		beego.NSNamespace("/storage",
-			beego.NSInclude(
-				&controllers.StorageController{},
-			),
-		),
+
+		//clusters setting, getting, deleting
 		beego.NSNamespace("/cluster",
 			beego.NSInclude(
 				&controllers.ClustersController{},
 			),
 		),
+
+		beego.NSNamespace("/zoofs",
+			beego.NSInclude(
+				&controllers.ZoofsController{},
+			),
+		),
+
+		//--------------------------------------->
+		beego.NSNamespace("/storage",
+			beego.NSInclude(
+				&controllers.StorageController{},
+			),
+		),
+
+		//client's setting, like create, remove
+		beego.NSNamespace("/client",
+			beego.NSInclude(
+				&controllers.ClientController{},
+			),
+		),
+
+		//temp api for Yan
 		beego.NSNamespace("/ansible",
 			beego.NSInclude(
 				&ansible.AnsibleController{},

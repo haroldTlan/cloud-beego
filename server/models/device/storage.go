@@ -4,6 +4,7 @@ import (
 	"aserver/models/nsq"
 	"fmt"
 	"github.com/astaxie/beego/orm"
+	"strconv"
 )
 
 type Rest struct {
@@ -30,10 +31,45 @@ func init() {
 
 func RestInit(v []Rest) (err error) {
 	for _, host := range v {
-		detail := host.Level + "*" + host.Loc //strings.Join(host.Level, host.Loc, "*")
-		nsq.NsqRequest("cmd.storage.build", host.Ip, detail, "storages")
+		msg := StorageMsg(host, len(v))
+		nsq.NewNsqRequest("storages", msg)
+		//detail := host.Level + "*" + host.Loc //strings.Join(host.Level, host.Loc, "*")
+		//nsq.NsqRequest("cmd.storage.build", host.Ip, detail, "storages")
 	}
 
+	return
+}
+
+func StorageMsg(host Rest, count int) (msg nsq.StorageNsq) {
+	o := orm.NewOrm()
+	level, _ := strconv.Atoi(host.Level)
+	msg = nsq.StorageNsq{Event: "cmd.storage.build", Ip: host.Ip, Loc: host.Loc, Level: level, Mount: "", Count: count}
+
+	var one Storage
+	var export string
+	o.QueryTable(new(Storage)).Filter("ip", host.Ip).All(&one)
+	clus, _ := GetClustersByCid(one.Clusterid)
+	for _, dev := range clus.Device {
+		if dev.Devtype == "export" {
+			export = dev.Ip
+		}
+	}
+
+	configs, _ := CliNodeConfig(export)
+
+	cid := 1
+
+	for _, sd := range configs.RozoDetail.Storaged {
+		if sd.Ip == host.Ip {
+			for _, s := range sd.Storage {
+				if s.Cid == cid {
+					fmt.Printf("%+v\n", sd)
+					msg.Mount = s.Root
+				}
+			}
+
+		}
+	}
 	return
 }
 

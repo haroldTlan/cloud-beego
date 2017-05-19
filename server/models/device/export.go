@@ -1,8 +1,11 @@
 package device
 
 import (
+	"aserver/models/nsq"
 	"aserver/models/util"
+
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/astaxie/beego/orm"
@@ -10,8 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v2"
+	//"gopkg.in/yaml.v2"
 )
 
 type Export struct {
@@ -26,11 +28,50 @@ func init() {
 	orm.RegisterModel(new(Export))
 }
 
-//Delete
-func DelZoofs(export string) (err error) { //need export's uuid
+//POST init rozofs's system
+func Zoofs(clusterid string, l int) (err error) {
 	o := orm.NewOrm()
 
-	if exist := o.QueryTable(new(Export)).Filter("uuid", export).Exist(); !exist {
+	//Get export & storages's ip
+	export, expands, _, err := _GetZoofs(clusterid)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	//Error Handing  and init rozofs
+	if err = judgeZoofs(export, expands, l); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	var clu Cluster //make zoofs true
+	if _, err = o.QueryTable("cluster").Filter("uuid", clusterid).All(&clu); err != nil {
+		return
+	}
+	clu.Zoofs = true
+	o.Update(&clu)
+
+	return
+}
+
+//Delete
+func DelZoofs(cid string) (err error) { //need export's uuid
+	export, storages, _, _ := _GetZoofs(cid)
+	o := orm.NewOrm()
+
+	//client remove
+	/*for _, host := range clients {
+		nsq.NsqRequest("cmd.client.remove", host, "true", "storages")
+	}*/
+
+	//storage remove
+	for _, host := range storages {
+		nsq.NsqRequest("cmd.storage.remove", host, "true", "storages")
+	}
+
+	//export remove
+	if exist := o.QueryTable(new(Export)).Filter("ip", export).Exist(); !exist {
 		err = errors.New("export is not exist")
 		util.AddLog(err)
 		return
@@ -43,339 +84,226 @@ func DelZoofs(export string) (err error) { //need export's uuid
 	return
 }
 
-func judge(export string, expands []string, l int) (err error) {
+//Use cid to get export & expands
+func _GetZoofs(cid string) (export string, expand []string, client []string, err error) {
+	clus, err := GetClustersByCid(cid)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	for _, dev := range clus.Device {
+		if dev.Devtype == "export" {
+			export = dev.Ip
+		} else if dev.Devtype == "storage" {
+			expand = append(expand, dev.Ip)
+		} else if dev.Devtype == "client" {
+			expand = append(client, dev.Ip)
+		}
+	}
+
+	return
+}
+
+//Error Handing  and init rozofs
+func judgeZoofs(export string, expands []string, l int) (err error) {
 	levelJudge := map[int]bool{
 		0: true, 1: true, 2: true,
 	}
 
+	//Ip error handing
 	if err = util.JudgeIp(export); err != nil {
+		util.AddLog(err)
 		return
 	}
-
 	for _, ip := range expands {
 		if err = util.JudgeIp(ip); err != nil {
+			util.AddLog(err)
 			return
 		}
 	}
-	if !levelJudge[l] {
-		err = errors.New("choose from 0, 1, 2")
-		return
-	}
 
+	//level judging
+	if !levelJudge[l] {
+		return fmt.Errorf("choose from 0, 1, 2")
+	}
 	if l == 0 && len(expands)%4 != 0 {
-		return errors.New("4 are needed for the layout 0")
+		return fmt.Errorf("4 are needed for the layout 0")
 	}
 	if l == 1 && len(expands)%8 != 0 {
-		return errors.New("8 are needed for the layout 1")
+		return fmt.Errorf("8 are needed for the layout 1")
 	}
 	if l == 2 && len(expands)%12 != 0 {
-		return errors.New("12 are needed for the layout 2")
+		return fmt.Errorf("12 are needed for the layout 2")
 	}
 
 	if err = volExport(export, expands, l); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	return
+}
+
+//Create volume, then export
+func volExport(export string, expands []string, l int) (err error) {
+	exports_stop := make([]string, 0)
+	volume_create := make([]string, 0)
+	exports_create := make([]string, 0)
+	exports_start := make([]string, 0)
+
+	exports_stop = append(exports_stop, "node", "stop", "-E", export)
+	volume_create = append(volume_create, "volume", "expand")
+	for _, i := range expands {
+		volume_create = append(volume_create, i)
+	}
+	volume_create = append(volume_create, "--vid", "1", "--layout", strconv.Itoa(l), "--exportd", export)
+	exports_create = append(exports_create, "export", "create", "1", "-E", export)
+	exports_start = append(exports_start, "node", "start", "-E", export)
+
+	if _, err = rozoCmd("zoofs", exports_stop); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+	if _, err = rozoCmd("zoofs", volume_create); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+	if _, err = rozoCmd("zoofs", exports_create); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+	if _, err = rozoCmd("zoofs", exports_start); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	err = zoofsInsert(export, expands)
+	if err != nil {
+		util.AddLog(err)
 		return
 	}
 	return
 }
 
-func volExport(export string, hosts []string, l int) (err error) {
-	exports_stop := "zoofs node stop -E " + export
-	volume_create := "zoofs volume expand " + strings.Join(hosts, " ") + " --vid 1  --layout " + strconv.Itoa(l) + " --exportd " + export
-	exports_create := "zoofs export create 1 -E " + export
-	exports_start := "zoofs node start -E " + export
-
-	stop, err := rozoCmd(exports_stop)
-	if err != nil {
-		err = errors.New(stop)
+//Change export and storages's details
+func zoofsInsert(export string, expands []string) (err error) {
+	if err = InsertExports(export); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	if errorCon(stop) {
-		err = errors.New(stop)
-		util.AddLog(err)
-		return
-	}
-
-	time.Sleep(2 * time.Second)
-	create, err := rozoCmd(volume_create)
-	if err != nil {
-		err = errors.New(create)
-		util.AddLog(err)
-		return
-	}
-
-	if errorCon(create) {
-		err = errors.New(create)
-		util.AddLog(err)
-		return
-	}
-
-	time.Sleep(2 * time.Second)
-	vol, err := rozoCmd(exports_create)
-	if err != nil {
-		err = errors.New(vol)
-		util.AddLog(err)
-		return
-	}
-	if errorCon(vol) {
-		err = errors.New(vol)
-		util.AddLog(err)
-		return
-	}
-	time.Sleep(2 * time.Second)
-	e, err := rozoCmd(exports_start)
-	if err != nil {
-		err = errors.New(e)
-		util.AddLog(err)
-		return
-	}
-	if errorCon(e) {
-		err = errors.New(e)
-		util.AddLog(err)
-		return
-	}
-
-	zoofsInsert(export, hosts)
-	return
-}
-
-func zoofsInsert(ip string, expands []string) (err error) {
-	err = InsertExports(ip, true)
-	AddMachine(ip, "export", "24")
+	configs, err := CliNodeConfig(export)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
+
 	for _, val := range expands {
-		cid, sid, slot, err := CliStorageConfig(ip, val)
+		cid, sid, slot, err := CliStorageConfig(configs, val)
 		if err != nil {
 			util.AddLog(err)
 			return err
 		}
-		if err := InsertStorages(ip, val, cid, sid, slot); err != nil {
+		if err := InsertStorages(export, val, cid, sid, slot); err != nil {
 			util.AddLog(err)
 			return err
 		}
-		AddMachine(val, "storage", "24")
 	}
 	return
 }
 
-func _GetZoofs(cid string) (export string, storage []string) {
-	var devs map[string][]string
-
-	clus, _ := GetClusters()
-	for _, clu := range clus {
-		if cid == clu.Uuid {
-			devs = clu.Devices
-		}
-	}
-	fmt.Println(cid)
-	fmt.Println(clus)
-	export = devs["export"][0]
-	storage = devs["storage"]
-
-	return
-}
-
-//main POST
-func Zoofs(clusterid string, l int) (err error) {
-	o := orm.NewOrm()
-
-	export, expands := _GetZoofs(clusterid)
-
-	if err = judge(export, expands, l); err != nil {
-		util.AddLog(err)
-		return
-	}
-
-	var e Export
-	num, err := o.QueryTable(new(Export)).Filter("ip", export).All(&e)
-	if err != nil {
-		util.AddLog(err)
-	}
-	e.Status = true
-
-	if num == 0 {
-		if _, err := o.Insert(&e); err != nil {
-			util.AddLog(err)
-		}
-	} else {
-		if _, err := o.Update(&e); err != nil {
-			util.AddLog(err)
-		}
-	}
-
-	for _, ex := range expands {
-		var s Storage
-		num, err := o.QueryTable(new(Storage)).Filter("ip", ex).All(&s)
-		if err != nil {
-			util.AddLog(err)
-		}
-		s.Status = true
-		if num == 0 {
-			if _, err := o.Insert(&s); err != nil {
-				util.AddLog(err)
-			}
-		} else {
-			if _, err := o.Update(&s); err != nil {
-				util.AddLog(err)
-			}
-		}
-	}
-
-	//AddClient(client)
-
-	/*var c Client
-	num, err = o.QueryTable(new(Client)).Filter("ip", client).All(&c)
-	if err != nil {
-		util.AddLog(err)
-	}
-	c.Status = true
-
-	if num == 0 {
-		if _, err := o.Insert(&c); err != nil {
-			util.AddLog(err)
-		}
-	} else {
-		if _, err := o.Update(&c); err != nil {
-			util.AddLog(err)
-		}
-	}*/
-	var clu Cluster //make zoofs true
-	if _, err = o.QueryTable("cluster").Filter("uuid", clusterid).All(&clu); err != nil {
-		return
-	}
-	clu.Zoofs = true
-	o.Update(&clu)
-
-	return
-}
-
-func InsertExports(ip string, status bool) error {
+//Change Export's status
+func InsertExports(ip string) error {
 	o := orm.NewOrm()
 
 	var one Export
 	num, err := o.QueryTable("export").Filter("ip", ip).All(&one)
 	if err != nil {
+		util.AddLog(err)
 		return err
 	}
 
 	if num == 0 {
-		uran := util.Urandom()
-		uuid := uran + "zip" + strings.Join(strings.Split(ip, "."), "")
-		one.Uuid = uuid
-		one.Ip = ip
-		one.Version = "ZS2000"
-		one.Size = "4U"
-		one.Status = status
-		one.Created = time.Now()
-		if _, err := o.Insert(&one); err != nil {
-			return err
-		}
+		return fmt.Errorf("export not exist")
 	} else {
-		one.Status = status
-		_, err = o.Update(&one)
-		if err != nil {
+		one.Status = true
+		if _, err = o.Update(&one); err != nil {
+			util.AddLog(err)
 			return err
 		}
 	}
 	return nil
 }
 
-func CliStorageConfig(export string, ip string) (int, int, string, error) {
+//Get storage's cid, sid, slot
+func CliStorageConfig(config RozoRes, storage string) (cid int, sid int, slot string, err error) {
+	vid, cid := 1, 1
+	for _, vol := range config.RozoDetail.Volume {
+		if vol.Cid == cid && vol.Vid == vid {
+			cid = vol.Cid
+			for _, s := range vol.Sids {
+				if s.Ip == storage {
+					sid = s.Sid
+				}
+			}
+		}
+	}
+	slot = strconv.Itoa(cid) + "_" + strconv.Itoa(sid)
+	return
+}
 
-	var config ConfigCluster
-	configs, err := NewCliNodeConfig(export)
+func CliNodeConfig(export string) (rozo RozoRes, err error) {
+	cmdArgs := make([]string, 0)
+	cmdArgs = append(cmdArgs, "rozofs.py", "--ip", export)
+
+	outs, err := rozoCmd("python", cmdArgs)
 	if err != nil {
-		return 0, 0, "", err
+		return
 	}
 
-	for _, vals := range configs {
-		storages := vals.Storages
-		for _, store := range storages {
-			if store.Ip == ip {
-				config = vals
-			}
-		}
+	var res map[string]interface{}
+	if err = json.Unmarshal([]byte(outs), &res); err != nil {
+		return
 	}
-	cid := config.Cid
-	var sid int
-	for _, val := range config.Storages {
-		if val.Ip == ip {
-			sid = val.Sid
+
+	if res["status"].(bool) {
+		if err = json.Unmarshal([]byte(outs), &rozo); err != nil {
+			return
 		}
+	} else {
+		err = fmt.Errorf(res["detail"].(string))
+		return
 	}
-	slot := strconv.Itoa(cid) + "_" + strconv.Itoa(sid)
-	return cid, sid, slot, nil
+
+	return
 }
 
-func NewCliNodeConfig(export string) ([]ConfigCluster, error) {
-	config := make(map[string][]map[string][]map[string][]map[string][]map[string][]map[string]string)
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("zoofs node config  -E %s", export))
+//Cmd
+func rozoCmd(name string, cmdArgs []string) (output string, err error) {
+	cmd := exec.Command(name, cmdArgs...)
 
-	w := bytes.NewBuffer(nil)
+	// Stdout buffer
+	w := &bytes.Buffer{}
+	// Attach buffer to command
 	cmd.Stderr = w
 	cmd.Stdout = w
-	if err := cmd.Run(); err != nil {
-		fmt.Println(err)
-	}
-	yaml.Unmarshal([]byte(w.Bytes()), &config)
-	exp := fmt.Sprintf("NODE: %s", export)
-	nodes := config[exp]
-	if len(nodes) == 0 {
-	}
-	//var volumes                                          TODO when a lot of vols
-	var clusters []map[string][]map[string]string
-	var clus []ConfigCluster
-	fmt.Printf("configs:%+v\n", config)
-	for _, node := range nodes {
-		if volumes, ok := node["EXPORTD"]; ok {
-			if vols, ok := volumes[0]["VOLUME"]; ok {
-				for _, vol := range vols {
-					if cs, ok := vol["volume 1"]; ok { //!!!!!!!!!!!volume 1
-						clusters = cs
-					}
-				}
-			}
-		}
-	}
+	// Execute command
+	err = cmd.Run() // will wait for command to return
 
-	for _, cluster := range clusters {
-		var clu ConfigCluster
-		if ds, ok := cluster["cluster 1"]; ok { //!!!!!!!!!!!cluster 1
-			clu.Cid = 1
-			for _, dev := range ds {
-				var node ConfigStorage
-				for k, v := range dev {
-					node.Sid, _ = strconv.Atoi(strings.Replace(k, "sid ", "", -1))
-					node.Ip = v
-					clu.Storages = append(clu.Storages, node)
-				}
-			}
-		}
-		clus = append(clus, clu)
-	}
-	return clus, nil
-}
-
-func rozoCmd(str string) (string, error) {
-	cmd := exec.Command("/bin/sh", "-c", str)
-	w := bytes.NewBuffer(nil)
-	cmd.Stderr = w
-	cmd.Stdout = w
-	err := cmd.Run()
-	return string(w.Bytes()), err
-}
-
-func errorCon(str string) bool {
+	//Cmd's Error Handing for rozofs
 	fails := []string{"FAILED", "usage", "failed"}
-
 	for _, val := range fails {
-		if strings.Index(str, val) >= 0 {
-			return true
+		if strings.Index(string(w.Bytes()), val) >= 0 {
+			return string(w.Bytes()), fmt.Errorf(string(w.Bytes()))
 		}
 	}
-	return false
+
+	return string(w.Bytes()), nil
 }

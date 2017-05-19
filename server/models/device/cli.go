@@ -2,43 +2,75 @@ package device
 
 import (
 	"aserver/models/util"
-	"errors"
 	"fmt"
 	"github.com/astaxie/beego/orm"
 )
 
+type RozoRes struct {
+	Status     bool `json:"status"`
+	RozoDetail `json:"detail"`
+}
+
+type RozoDetail struct {
+	Exportd  `json:"exportd"`
+	Storaged []ConfStoraged `json:"storaged"`
+}
+
+type Exportd struct {
+	Volume []ConfVol    `json:"volume"`
+	Export []ConfExport `json:"export"`
+	Ip     string       `json:"ip"`
+}
+
+type ConfVol struct {
+	Vid  int       `json:"vid"`
+	Cid  int       `json:"cid"`
+	Sids []ConfSid `json:"sid"`
+}
+
+type ConfSid struct {
+	Ip  string `json:"ip"`
+	Sid int    `json:"sid"`
+}
+
+type ConfExport struct {
+	Root string `json:"root"`
+	Vid  int    `json:"vid"`
+}
+
+type ConfStoraged struct {
+	Ip      string        `json:"ip"`
+	Storage []ConfStorage `json:"storage"`
+}
+
+type ConfStorage struct {
+	Cid  int    `json:"cid"`
+	Sid  int    `json:"sid"`
+	Root string `json:"root"`
+}
+
 func CliClearAllRozo(export string) (err error) {
 	o := orm.NewOrm()
 
+	eRemove := make([]string, 0)
+	vRemove := make([]string, 0)
+
 	var e Export
-	if _, err = o.QueryTable("export").Filter("uuid", export).All(&e); err != nil { //TODO
+	if _, err = o.QueryTable("export").Filter("ip", export).All(&e); err != nil { //TODO
 		return
 	}
 
-	eRemove := fmt.Sprintf("zoofs export remove  %s -E %s --force", "1", e.Ip)
-	eResult, err := rozoCmd(eRemove)
+	eRemove = append(eRemove, "export", "remove", "1", "-E", e.Ip, "--force")
+	vRemove = append(vRemove, "volume", "remove", "-v", "1", "-E", e.Ip)
+
+	_, err = rozoCmd("zoofs", eRemove)
 	if err != nil {
-		err = errors.New(eResult)
 		util.AddLog(err)
 		return
 	}
 
-	if errorCon(eResult) {
-		err = errors.New(eResult)
-		util.AddLog(err)
-		return
-	}
-
-	vRemove := fmt.Sprintf("zoofs volume remove -v %s -E %s", "1", e.Ip)
-	vol, err := rozoCmd(vRemove)
+	_, err = rozoCmd("zoofs", vRemove)
 	if err != nil {
-		err = errors.New(vol)
-		util.AddLog(err)
-		return
-	}
-
-	if errorCon(vol) {
-		err = errors.New(vol)
 		util.AddLog(err)
 		return
 	}

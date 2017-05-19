@@ -5,7 +5,7 @@ import (
 	"aserver/models/util"
 
 	"errors"
-	_ "fmt"
+	"fmt"
 	"github.com/astaxie/beego/orm"
 	"strings"
 	"time"
@@ -23,6 +23,11 @@ type ExportInit struct {
 	Devtype   string    `orm:"column(devtype);size(64);null" json:"devtype"`
 }
 
+type ConClient struct {
+	Ip     string
+	Status bool
+}
+
 type Client struct {
 	ExportInit
 }
@@ -35,8 +40,55 @@ func init() {
 	orm.RegisterModel(new(Client))
 }
 
+func UpdateClient(cid string, clients []ConClient) (err error) {
+	o := orm.NewOrm()
+
+	fmt.Printf("%+v", clients)
+	for _, client := range clients {
+
+		if client.Status {
+
+			var c Client
+			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
+			if err != nil {
+				util.AddLog(err)
+				return err
+			}
+
+			if num > 0 && !c.Status {
+				if err = OpenClient(c.Ip, cid); err != nil {
+					util.AddLog(err)
+					return err
+				}
+				//when ip is new && going to open
+			} else if num == 0 {
+				//open
+				if err = OpenClient(client.Ip, cid); err != nil {
+					util.AddLog(err)
+					return err
+				}
+			}
+		} else {
+			var c Client
+			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
+			if err != nil {
+				util.AddLog(err)
+				return err
+			}
+
+			if num == 0 {
+				continue
+				//remove client
+			} else {
+				nsq.NsqRequest("cmd.client.remove", client.Ip, "true", "storages")
+			}
+		}
+	}
+	return
+}
+
 //POST create one client
-func AddClient(ip string, cid string) (err error) {
+func OpenClient(ip, cid string) (err error) {
 	o := orm.NewOrm()
 
 	var c Client
@@ -49,7 +101,7 @@ func AddClient(ip string, cid string) (err error) {
 
 	//whether in use
 	if num == 0 {
-		addClient(ip, cid)
+		AddClient(ip, cid)
 	} else {
 		if c.Status {
 			err = errors.New("client is in use")
@@ -80,7 +132,7 @@ func AddClient(ip string, cid string) (err error) {
 	return
 }
 
-func addClient(ip, cid string) (err error) {
+func AddClient(ip, cid string) (err error) {
 	o := orm.NewOrm()
 
 	var one Client

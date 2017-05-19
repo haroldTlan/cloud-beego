@@ -4,7 +4,8 @@ import (
 	"aserver/controllers/web"
 	"aserver/models/device"
 	"github.com/astaxie/beego"
-	_ "time"
+
+	"encoding/json"
 )
 
 // ClientController operations for Setting
@@ -25,12 +26,20 @@ func (c *ClientController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *ClientController) Post() {
-	ip := c.GetString("ip")
+	cs := c.GetString("clients")
 	cid := c.GetString("cid")
 
-	err := device.AddClient(ip, cid)
-	result := web.NewResponse(err, err)
-	c.Data["json"] = &result
+	var clients []device.ConClient
+	if err := json.Unmarshal([]byte(cs), &clients); err == nil {
+		c.Ctx.Output.SetStatus(201)
+		err = device.UpdateClient(cid, clients)
+		result := web.NewResponse(err, err)
+		c.Data["json"] = &result
+	} else {
+		result := web.NewResponse(err.Error(), err)
+		c.Data["json"] = &result
+	}
+
 	c.ServeJSON()
 }
 

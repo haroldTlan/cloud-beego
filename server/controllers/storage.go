@@ -5,7 +5,8 @@ import (
 	"aserver/models/device"
 	"encoding/json"
 	"github.com/astaxie/beego"
-	_ "time"
+
+	_ "fmt"
 )
 
 // StorageController operations for Setting
