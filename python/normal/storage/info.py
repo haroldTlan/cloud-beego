@@ -97,28 +97,99 @@ class Realtime(object):
         self._ifaces = network.ifaces().values()
 
     def _rest_loc(self):
-	journals = []
-	disks = []
+        journals = []
+        disks, raids, vols, inis, fs = [], [], [], [], []
 
-	lm = LocationMapping()
-	dsus = [{'location': dsu, 'support_disk_nr': nr} for dsu, nr in lm.dsu_list.items()]
-	disks = rest.list_disk()
+        lm = LocationMapping()
+        dsus = [{'location': dsu, 'support_disk_nr': nr} for dsu, nr in lm.dsu_list.items()]
 
-	for disk_db in db.Disk.select():
-	    for disk in disks:
-		if  disk['id']==disk_db.uuid:
-		    disk['sn']=disk_db.sn
-		    disk['model']=disk_db.model
+        for disk_db in db.Disk.select():
+            disk = {}
+            if disk_db.health == 'down' and disk_db.role == 'unused':
+                continue
+            else:
+                disk['dev_name'] = disk_db.dev_name
+                disk['host'] = disk_db.host
+                disk['health'] = disk_db.health
+                disk['location'] = disk_db.location
+                disk['cap_sector'] = disk_db.cap_sector
+                disk['cap_mb'] = disk_db.cap_sector/1024/2.0
+                disk['role'] = disk_db.role
+                try:
+                    disk['raid'] = disk_db.raid.name
+                except:
+                    disk['raid'] = ''
+                disk['id'] = disk_db.uuid
+                disk['sn'] = disk_db.sn
+                disk['model'] = disk_db.model
+                disk['vendor'] = disk_db.vendor
+            disks.append(disk)
 
-	raids = rest.list_raid()
-	volumes = rest.list_volume()
-	initiators = rest.list_initiator()
-	fs = rest.FilesystemRest().list()
 
-	jours = db.Journal.select()
-	for i in jours:
-	    journals.append(dict(message=i.message,created_at=int(i.created_at.strftime('%s')),level=i.level))
-	loc = dict(dsus=dsus,disk=disks,raid=raids,volume=volumes,initiator=initiators,filesystem=fs,journal=journals)
+        for raid_db in db.Raid.select():
+            raid = {}
+            if not raid_db.deleted:
+                raid['name'] = raid_db.name
+                raid['id'] = raid_db.uuid
+                raid['chunk_kb'] = raid_db.chunk_kb
+                raid['level'] = raid_db.level
+                raid['health'] = raid_db.health
+                raid['cap_mb'] = raid_db.cap*1024*1024*2
+                raid['cap_sector'] = raid_db.cap*1024
+                raid['used_cap_mb'] = raid_db.used_cap*1024
+                raid['used_cap_sector'] = raid_db.used_cap*1024*1024*2
+                raid['rqr_count'] = raid_db.rqr_count
+                raids.append(raid)
+
+        for vol_db in db.Volume.select():
+            vol = {}
+            if not vol_db.deleted:
+                vol['name'] = vol_db.name
+                vol['health'] = vol_db.health
+                vol['used'] = vol_db.used
+                vol['cap_sector'] = vol_db.cap*1024*1024*2
+                vol['cap_mb'] = vol_db.cap*1024
+                vol['id'] = vol_db.uuid
+                try:
+                    for i in db.RaidVolume.select():
+                        if i.volume.uuid == vol_db.uuid:
+                            vol['owner'] = i.raid.name
+                except:
+                    vol['owner'] = ''
+                vols.append(vol)
+
+        for ini_db in db.Initiator.select():
+            ini = {}
+            ini['wwn'] = ini_db.wwn
+            ini['id'] = ini_db.wwn
+            ini['volumes'] = []
+            ini['portals'] = []
+            for i in db.InitiatorVolume.select():
+                if i.initiator.wwn == ini_db.wwn:
+                    ini['volumes'].append(i.volume.name)
+            for j in db.NetworkInitiator.select():
+                if j.initiator.wwn == ini_db.wwn:
+                    ini['portals'].append(j.eth)
+            ini['active_session'] = False      #!!
+
+            inis.append(ini)
+
+        for fs_db in db.XFS.select():
+            f = {}
+            f['id'] = fs_db.uuid
+            f['type'] = fs_db.type
+            f['name'] = fs_db.name
+            try:
+                f['volume'] = fs_db.volume.name
+            except:
+                f['volume'] = ''
+            fs.append(f)
+
+        for i in db.Journal.select():
+            journals.append(dict(message=i.message,created_at=int(i.created_at.strftime('%s')),level=i.level))
+
+        loc = dict(dsus=dsus,disk=disks,raid=raids,volume=vols,initiator=inis,filesystem=fs,journal=journals)
+
 	return loc
 	
     def _flow(self, path, prev):

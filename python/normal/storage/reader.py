@@ -78,11 +78,12 @@ def cmd(events):
 		pub('cmd.client.add',False, ','.join(result.split('\n')))
 
         elif events['event'] == 'cmd.storage.build':
-	    level = events['status'].split("*")[0]
-	    loc = events['status'].split("*")[1]
+	    level = events['level']
+	    loc = events['loc']
+            mountpoint =events['mountpoint'] 
 
 	    status, detail = addDev(level, loc, mountpoint)
-	    pub('cmd.storage.build', status, detail)
+	    pub('cmd.storage.building', status, detail)
 
         elif events['event'] == 'cmd.storage.remove':
 	    delete_all()
