@@ -36,6 +36,7 @@ type StoreView struct {
 	R_Vol     float64 `json:"read_vol"`
 	Rest      `json:"loc"`
 	Gate      []Gates `json:"gateway"`
+	Fs        []Df    `json:"fs"`
 	Online    int     `json:"online"`
 }
 

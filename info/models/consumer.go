@@ -37,6 +37,8 @@ func handle(msg *consumer.Message) {
 			//avoid array gate null
 			if val.Gate == nil {
 				val.Gate = make([]Gates, 0)
+			} else if val.Fs == nil {
+				val.Fs = make([]Df, 0)
 			}
 
 			err := selectMachines(val.Ip)
@@ -70,6 +72,11 @@ func InfoTest(data *StoreView, ip string) {
 				data.Dfs[i].Available = Round(data.Dfs[i].Available/1024.0/1024.0, 2)
 			}
 		}
+		for i, _ := range data.Fs {
+			data.Fs[i].Total = Round(data.Fs[i].Total/1024.0/1024.0, 2)
+			data.Fs[i].Available = Round(data.Fs[i].Available/1024.0/1024.0, 2)
+		}
+
 		NsqInfos[ip] = *data
 		l.Unlock()
 	} else {
