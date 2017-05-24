@@ -318,6 +318,16 @@ class Realtime(object):
                 nr += 1
         return 40 + (20 + random.randint(0,2)) * (total/nr) / 100
 
+    def _stat_fs(self):
+	result =[]
+        df = os.popen("df")
+        lines = df.readlines()
+        for i in lines:
+            for vol_db in db.Volume.select():
+                if vol_db.name in i and vol_db.deleted == 0 and vol_db.used:
+                    result.append(self._stat_df_temp(i,fs_db.name))
+	return result
+
     def _stat_df(self):
 	result =[]
         df = os.popen("df")
@@ -331,12 +341,7 @@ class Realtime(object):
                 result.append(self._stat_df_temp(i,"docker"))
             elif "/var\n" in i:
                 result.append(self._stat_df_temp(i,"var"))
-            elif "volume" in i:
-                try:
-                    name = i.split(' ')[0].split('-')[-1]
-                    result.append(self._stat_df_temp(i,name))
-                except:
-                    continue
+
   	return result
 
     def _stat_df_temp(self,line,name):
@@ -468,6 +473,7 @@ class Realtime(object):
 	df = self._stat_df()
 	rd_t,rd_u = self._stat_cache()
 	iface = self.get_ip_address()
+	fs = self._stat_fs()
 
 	#Yan
 	df.append(self._stat_weed_cpu())
@@ -497,7 +503,8 @@ class Realtime(object):
                   'read_vol': rvol,	#MB/s
                   'write_vol': wvol,	#MB/s
 		  'loc': loc,
-		  'gateway': gate
+		  'gateway': gate,
+		  'fs': fs
                   }
         self._samples.append(sample)
 

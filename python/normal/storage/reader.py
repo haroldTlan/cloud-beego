@@ -48,7 +48,7 @@ def manage(events):
         logger.info(result)
 
 def get_ip_address():
-    INTERFACE = ['eth0','br0','eth1']
+    INTERFACE = ['eth0', 'eth1']
     ifaces = network.ifaces().values()
     for i in INTERFACE:
         for j in ifaces:
@@ -60,22 +60,22 @@ def cmd(events):
     if events['ip'] in iface:
 	logger.info(events)
         if events['event'] == 'cmd.client.add':
-            result = commands.getoutput("zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/"%events['status'])
+            result = commands.getoutput("zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/"%events['export'])
 	    if result == '':
-		os.system("echo 'zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/' >> /etc/rc.step3"%events['status'])
+		os.system("echo 'zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/' >> /etc/rc.step3"%events['export'])
 		os.system("service samba restart")
 		os.system("chmod 777 -R /mnt/zoofs")
-		pub('cmd.client.add',True,"success")
+		pubClient('cmd.client.add',True,"success", events['count'], events['id'])
 	    else:
-		pub('cmd.client.add',False, ','.join(result.split('\n')))
+		pubClient('cmd.client.add',False, ','.join(result.split('\n')), events['count'], events['id'])
 
         elif events['event'] == 'cmd.client.remove':
 	    result = commands.getoutput("umount zoofs")
 	    os.system("sed -i '/zoofsmount/d' /etc/rc.step3")
 	    if result == '':
-		pub('cmd.client.remove',True,"success")
+		pubClient('cmd.client.remove',True,"success", events['count'], events['id'])
 	    else:
-		pub('cmd.client.add',False, ','.join(result.split('\n')))
+		pubClient('cmd.client.add',False, ','.join(result.split('\n')), events['count'], events['id'])
 
         elif events['event'] == 'cmd.storage.build':
 	    level = events['level']
@@ -83,12 +83,22 @@ def cmd(events):
             mountpoint =events['mountpoint'] 
 
 	    status, detail = addDev(level, loc, mountpoint)
-	    pub('cmd.storage.building', status, detail)
+	    pub('cmd.storage.build', status, detail)
 
         elif events['event'] == 'cmd.storage.remove':
 	    delete_all()
 	    pub('cmd.storage.remove', False, "success")
 
+
+def pubClient(event, status, detail, count, setid):
+    back = {}
+    back['event']= event
+    back['count']= count
+    back['id']= setid
+    back['status']=status
+    back['detail']=detail.replace("'","")
+
+    os.system("echo \'%s\' >> /home/monitor/rpc.log"%json.dumps(back).replace("'","\""))
 
 def pub(event, status,detail):
     back = {}

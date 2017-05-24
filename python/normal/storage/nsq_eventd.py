@@ -325,11 +325,19 @@ class EventDaemon(Daemon):
     	    a=json.loads(result.replace("\n",""))
 	except:
 	    pass
-	print a['event']
-        o['event'] = a['event']
-        o['ip'] = self.get_ip_address()
-	o['detail'] = a['detail']
-	o['result'] = a['status']
+
+	if a['event'] == 'cmd.client.add' or a['event'] == 'cmd.client.remove':
+	    o['event'] = a['event']
+            o['ip'] = self.get_ip_address()
+            o['detail'] = a['detail']
+            o['status'] = a['status']
+	    o['count'] = a['count']
+	    o['id'] = a['id']
+	else:
+            o['event'] = a['event']
+            o['ip'] = self.get_ip_address()
+	    o['detail'] = a['detail']
+    	    o['result'] = a['status']
 	try:
             result = json.dumps(o)
 	except:
