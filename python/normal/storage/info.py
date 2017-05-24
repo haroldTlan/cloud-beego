@@ -105,7 +105,7 @@ class Realtime(object):
 
         for disk_db in db.Disk.select():
             disk = {}
-            if disk_db.health == 'down' and disk_db.role == 'unused':
+            if disk_db.health == 'down' and disk_db.role == 'unused' or disk_db.location == '':
                 continue
             else:
                 disk['dev_name'] = disk_db.dev_name
@@ -325,7 +325,7 @@ class Realtime(object):
         for i in lines:
             for vol_db in db.Volume.select():
                 if vol_db.name in i and vol_db.deleted == 0 and vol_db.used:
-                    result.append(self._stat_df_temp(i,fs_db.name))
+                    result.append(self._stat_df_temp(i,vol_db.name))
 	return result
 
     def _stat_df(self):
