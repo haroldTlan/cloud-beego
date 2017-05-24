@@ -3,13 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/astaxie/beego/orm"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -33,26 +28,18 @@ func RefreshOverViews(ip, event string) error {
 
 	switch event {
 
+	//when offline, delete infos from machine then change machine's status
 	case "ping.offline":
-		//RefreshStatRemove(one.Uuid)
-		//	RefreshAnsible()
 		if err := DeleteMachine(one.Uuid); err != nil {
 			return err
 		}
 
+		//nothing happened, status is True, the infos will insert in it.
 	case "ping.online":
 		fmt.Println("online!!!!")
 		time.Sleep(4 * time.Second)
-		//RefreshStatAdd(one.Ip, one.Devtype)
-		//	RefreshAnsible()
-		/*if err := RefreshStores(one.Uuid); err != nil {
-			return err
-		}*/
 
 	default:
-		/*	if err := RefreshStores(one.Uuid); err != nil {
-			return err
-		}*/
 	}
 
 	return nil
@@ -140,60 +127,6 @@ func RefreshMulAttention(uid int, message string) {
 	}()
 }
 
-func RefreshStatRemove(uuid string) { //auto delete info.yml  monitoring
-	o := orm.NewOrm()
-	var one Machine
-	if _, err := o.QueryTable("machine").Filter("uuid", uuid).All(&one); err != nil {
-		fmt.Println(err)
-	}
-	ip := one.Ip
-
-	path := "/root/code/yml/vars/info.yml"
-	str := ReadConf(path)
-
-	var stat StatInfo //yml struct
-	var arrs []string
-	yaml.Unmarshal([]byte(str), &stat)
-
-	if one.Devtype == "export" {
-		arr := strings.Split(stat.Exports, ",")
-		for _, val := range arr {
-			if val == ip {
-				continue
-			}
-			arrs = append(arrs, val)
-		}
-		stat.Exports = strings.Join(arrs, ",")
-	} else {
-		arr := strings.Split(stat.Storages, ",")
-		for _, val := range arr {
-			if val == ip {
-				continue
-			}
-			arrs = append(arrs, val)
-		}
-		stat.Storages = strings.Join(arrs, ",")
-	}
-	down, _ := yaml.Marshal(&stat)
-	WriteConf(path, fmt.Sprintf("---\n%s\n", string(down)))
-}
-
-func RefreshStatAdd(ip, devtype string) { //auto add info.yml
-	path := "/root/code/yml/vars/info.yml"
-
-	str := ReadConf(path)
-	var stat StatInfo
-	yaml.Unmarshal([]byte(str), &stat)
-	if devtype == "export" && !strings.Contains(stat.Exports, ip) {
-		stat.Exports = stat.Exports + "," + ip
-	} else if devtype == "storage" && !strings.Contains(stat.Storages, ip) {
-		stat.Storages = stat.Storages + "," + ip
-	}
-
-	down, _ := yaml.Marshal(&stat)
-	WriteConf(path, fmt.Sprintf("---\n%s\n", string(down)))
-}
-
 func SendMails(message string, level int) {
 	o := orm.NewOrm()
 	var adds []Mail
@@ -206,16 +139,6 @@ func SendMails(message string, level int) {
 	}
 	MailSending(mails, message)
 }
-
-func RefreshAnsible() {
-	for i := 0; i < 5; i++ {
-		fmt.Println(i)
-		if _, err := exec.Command("python", "/etc/ansible/info/device.py").Output(); err != nil {
-			AddLogtoChan(err)
-		}
-	}
-}
-
 func AddLogtoChan(err error) {
 	var message string
 	var log Log
@@ -230,29 +153,4 @@ func AddLogtoChan(err error) {
 
 	ChanLogEvent <- log
 	return
-}
-
-func ReadConf(path string) string {
-	fi, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	defer fi.Close()
-	fd, err := ioutil.ReadAll(fi)
-	return string(fd)
-}
-
-func WriteConf(path string, str string) {
-	yaml := []byte(str)
-
-	fi, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	defer fi.Close()
-	err = ioutil.WriteFile(path, yaml, 0666)
-	if err != nil {
-		panic(err)
-	}
-
 }

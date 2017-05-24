@@ -22,37 +22,19 @@ var (
 )
 
 type Setting struct {
-	Event      string
-	Count      int
-	Error      int
-	Success    int
-	ErrorMsg   string
-	SuccessMsg string
+	Event    string
+	Count    int
+	ErrCount int
+	Success  int
+	ErrorMsg []ErrMsg
+}
+type ErrMsg struct {
+	Ip  string
+	Msg string
 }
 
 func init() {
 	NsqEvents = make(map[string]Setting)
-}
-
-//connect consumer 10 times
-func RunConsumer(maxInFlight int, nsqdAddr string) {
-	count := 10
-	for {
-		consumer.Register("CloudEvent", "consume86", maxInFlight, handle)
-		err := consumer.Connect(nsqdAddr)
-		if err == nil {
-			AddLogtoChan(err)
-			break
-		}
-		time.Sleep(time.Second * 10)
-		count -= 1
-		if count == 0 {
-			AddLogtoChan(err)
-			os.Exit(1)
-		}
-	}
-
-	consumer.Start(true)
 }
 
 func handle(msg *consumer.Message) {
@@ -61,15 +43,61 @@ func handle(msg *consumer.Message) {
 		AddLogtoChan(err)
 		return
 	}
-	//fmt.Printf("%+v\n", string(msg.Body))
 	result := eventJugde(data)
+
+	if result == nil {
+		msg.Success()
+		return
+	}
 
 	eventTopic.Publish(result)
 	fmt.Printf("%+v\n", result)
 	msg.Success()
 }
 
-func eventJugde(values map[string]interface{}) interface{} {
+func ClientSet(values map[string]interface{}) (count float64) {
+	success, err := 0, 0
+	errMsg := ""
+
+	ip := values["ip"].(string)
+	id := values["id"].(string)
+	event := values["event"].(string)
+	status := values["status"].(bool)
+	detail := values["detail"].(string)
+
+	if status {
+		success = 1
+	} else {
+		err = 1
+		errMsg = detail
+	}
+	if _, ok := NsqEvents[id]; ok {
+		//when more then the first time
+		_err := NsqEvents[id].ErrCount + err
+		_success := NsqEvents[id].Success + success
+		_count := NsqEvents[id].Count + 1
+		_msg := NsqEvents[id].ErrorMsg
+		if err == 1 {
+			_msg = append(_msg, ErrMsg{Ip: ip, Msg: errMsg})
+		}
+
+		NsqEvents[id] = Setting{Count: _count, Event: event, ErrCount: _err, Success: _success, ErrorMsg: _msg}
+
+	} else {
+		//when failed, add error message
+		msg := make([]ErrMsg, 0)
+		if err == 1 {
+			msg = []ErrMsg{ErrMsg{Ip: ip, Msg: errMsg}}
+		}
+
+		NsqEvents[id] = Setting{Count: 1, Event: event, ErrCount: err, Success: success, ErrorMsg: msg}
+	}
+
+	count = float64(NsqEvents[id].Count)
+	return
+}
+
+func eventJugde(values map[string]interface{}) (result interface{}) {
 	o := orm.NewOrm()
 	switch values["event"].(string) {
 	case "safety.created":
@@ -77,17 +105,33 @@ func eventJugde(values map[string]interface{}) interface{} {
 			Ip: values["ip"].(string)}
 
 	case "info.warning", "info.normal":
-		result := Warning{Event: values["event"].(string),
+		res := Warning{Event: values["event"].(string),
 			Type:   values["type"].(string),
 			Ip:     values["ip"].(string),
 			Value:  values["value"].(float64),
 			Status: values["status"].(string)}
-		if result.Status == "true" {
-			if err := RefreshInfoMail(result); err != nil {
+		if res.Status == "true" {
+			if err := RefreshInfoMail(res); err != nil {
 				AddLogtoChan(err)
 			}
 		}
-		return result
+		return res
+
+	case "cmd.client.add", "cmd.client.remove":
+		//update global data
+		count := values["count"].(float64)
+		id := values["id"].(string)
+
+		_count := ClientSet(values)
+		temp1(values["ip"].(string), values["event"].(string), values["status"].(bool))
+		fmt.Println("\n", count, "+", _count)
+		fmt.Printf("%+v", NsqEvents[id])
+		if count == _count {
+			fmt.Printf("???%+v??", NsqEvents[id])
+			return NsqEvents[id]
+		}
+
+		return nil
 
 	case "cmd.storage.build", "cmd.storage.remove":
 		temp2(values["ip"].(string), values["result"].(bool))
@@ -109,7 +153,7 @@ func eventJugde(values map[string]interface{}) interface{} {
 			fmt.Println(err)
 			return err
 		}
-		result := newEvent(values, machineId)
+		result = newEvent(values, machineId)
 		if value, ok := result.(error); ok {
 			AddLogtoChan(value)
 			return nil
@@ -117,7 +161,7 @@ func eventJugde(values map[string]interface{}) interface{} {
 		if err := RefreshOverViews(values["ip"].(string), values["event"].(string)); err != nil {
 			AddLogtoChan(err)
 		}
-		return result
+		return
 	}
 }
 
@@ -173,12 +217,6 @@ func newEvent(values map[string]interface{}, machineId string) interface{} {
 			RaidDisks: ones,
 			MachineId: machineId,
 			Ip:        values["ip"].(string)}
-
-	case "machine.created":
-		InitSingleRemote(values["ip"].(string))
-		return HeartBeat{Event: values["event"].(string),
-			Ip:        values["ip"].(string),
-			MachineId: machineId}
 	}
 	return nil
 }
@@ -226,4 +264,25 @@ func temp2(ip string, status bool) {
 	c.Store = status
 
 	o.Update(&c)
+}
+
+//connect consumer 10 times
+func RunConsumer(maxInFlight int, nsqdAddr string) {
+	count := 10
+	for {
+		consumer.Register("CloudEvent", "consume86", maxInFlight, handle)
+		err := consumer.Connect(nsqdAddr)
+		if err == nil {
+			AddLogtoChan(err)
+			break
+		}
+		time.Sleep(time.Second * 10)
+		count -= 1
+		if count == 0 {
+			AddLogtoChan(err)
+			os.Exit(1)
+		}
+	}
+
+	consumer.Start(true)
 }
