@@ -13,11 +13,12 @@ type Ping struct {
 	Status string `json:"status"`
 }
 
-type SettingNsq struct {
+type ClientNsq struct {
 	Event  string `json:"event"`
 	Ip     string `json:"ip"`
-	Status string `json:"status"`
+	Export string `json:"export"`
 	Count  int    `json:"count"`
+	Id     string `json:"id"`
 }
 
 type StorageNsq struct {
@@ -27,7 +28,7 @@ type StorageNsq struct {
 	Mount string `json:"mountpoint"`
 	Level int    `json:"level"`
 	Count int    `json:"count"`
-	//Status     string `json:"status"`
+	Id    string `json:"id"`
 }
 
 var (

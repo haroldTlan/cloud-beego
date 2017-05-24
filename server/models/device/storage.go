@@ -2,6 +2,8 @@ package device
 
 import (
 	"aserver/models/nsq"
+	"aserver/models/util"
+
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	"strconv"
@@ -30,8 +32,9 @@ func init() {
 }
 
 func RestInit(v []Rest) (err error) {
+	setId := util.Urandom()
 	for _, host := range v {
-		msg := StorageMsg(host, len(v))
+		msg := StorageMsg(host, len(v), setId)
 		nsq.NewNsqRequest("storages", msg)
 		//detail := host.Level + "*" + host.Loc //strings.Join(host.Level, host.Loc, "*")
 		//nsq.NsqRequest("cmd.storage.build", host.Ip, detail, "storages")
@@ -40,10 +43,10 @@ func RestInit(v []Rest) (err error) {
 	return
 }
 
-func StorageMsg(host Rest, count int) (msg nsq.StorageNsq) {
+func StorageMsg(host Rest, count int, setId string) (msg nsq.StorageNsq) {
 	o := orm.NewOrm()
 	level, _ := strconv.Atoi(host.Level)
-	msg = nsq.StorageNsq{Event: "cmd.storage.build", Ip: host.Ip, Loc: host.Loc, Level: level, Mount: "", Count: count}
+	msg = nsq.StorageNsq{Event: "cmd.storage.build", Ip: host.Ip, Loc: host.Loc, Level: level, Mount: "", Count: count, Id: setId}
 
 	var one Storage
 	var export string
@@ -64,7 +67,7 @@ func StorageMsg(host Rest, count int) (msg nsq.StorageNsq) {
 			for _, s := range sd.Storage {
 				if s.Cid == cid {
 					fmt.Printf("%+v\n", sd)
-					msg.Mount = s.Root
+					msg.Mount = s.Root + "/0"
 				}
 			}
 

@@ -23,7 +23,7 @@ type ExportInit struct {
 	Devtype   string    `orm:"column(devtype);size(64);null" json:"devtype"`
 }
 
-type ConClient struct {
+type ConfClient struct {
 	Ip     string
 	Status bool
 }
@@ -40,47 +40,79 @@ func init() {
 	orm.RegisterModel(new(Client))
 }
 
-func UpdateClient(cid string, clients []ConClient) (err error) {
+func UpdateClient(cid string, clients []ConfClient) (err error) {
+	setId := util.Urandom()
+	client, err := SelectClientIP(cid, clients)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	for _, c := range client["open"] {
+		if err = OpenClient(c, cid, setId, len(client["open"])); err != nil {
+			util.AddLog(err)
+			return err
+		}
+	}
+
+	for _, c := range client["close"] {
+		msg := nsq.ClientNsq{Event: "cmd.client.remove", Ip: c, Count: len(client["close"]), Id: setId}
+		fmt.Printf("\n%+v", msg)
+		nsq.NewNsqRequest("storages", msg)
+		//	nsq.NsqRequest("cmd.client.remove", c, "true", "storages")
+	}
+	return
+}
+
+//select open or close client's ip
+func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, err error) {
 	o := orm.NewOrm()
+	clients = make(map[string][]string)
+	clients["open"] = make([]string, 0)
+	clients["close"] = make([]string, 0)
 
-	fmt.Printf("%+v", clients)
-	for _, client := range clients {
-
+	for _, client := range cs {
+		var c Client
+		//GUI select the ip
 		if client.Status {
-
-			var c Client
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
-				return err
+				return clients, err
+			}
+			//sql did not have, create and open
+			if num == 0 {
+				if err = AddClient(client.Ip, cid); err != nil {
+					util.AddLog(err)
+					return clients, err
+				}
+				clients["open"] = append(clients["open"], client.Ip)
+			} else {
+				//the client has been opened, then continue
+				if c.Status {
+					continue
+				} else {
+					clients["open"] = append(clients["open"], client.Ip)
+				}
 			}
 
-			if num > 0 && !c.Status {
-				if err = OpenClient(c.Ip, cid); err != nil {
-					util.AddLog(err)
-					return err
-				}
-				//when ip is new && going to open
-			} else if num == 0 {
-				//open
-				if err = OpenClient(client.Ip, cid); err != nil {
-					util.AddLog(err)
-					return err
-				}
-			}
+			//GUI do not select the ip
 		} else {
-			var c Client
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
-				return err
+				return clients, err
 			}
-
 			if num == 0 {
 				continue
-				//remove client
+
+				//if true, then close
 			} else {
-				nsq.NsqRequest("cmd.client.remove", client.Ip, "true", "storages")
+				if c.Status {
+					clients["close"] = append(clients["close"], client.Ip)
+				} else {
+					continue
+				}
 			}
 		}
 	}
@@ -88,7 +120,7 @@ func UpdateClient(cid string, clients []ConClient) (err error) {
 }
 
 //POST create one client
-func OpenClient(ip, cid string) (err error) {
+func OpenClient(ip, cid, setId string, count int) (err error) {
 	o := orm.NewOrm()
 
 	var c Client
@@ -124,7 +156,11 @@ func OpenClient(ip, cid string) (err error) {
 	}
 
 	if err = util.JudgeIp(export); err == nil {
-		nsq.NsqRequest("cmd.client.add", ip, export, "storages")
+
+		msg := nsq.ClientNsq{Event: "cmd.client.add", Ip: ip, Export: export, Count: count, Id: setId}
+		fmt.Printf("\n%+v", msg)
+		nsq.NewNsqRequest("storages", msg)
+		//nsq.NsqRequest("cmd.client.add", ip, export, "storages")
 	} else {
 		util.AddLog(err)
 		return

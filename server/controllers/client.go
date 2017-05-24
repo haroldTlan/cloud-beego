@@ -29,7 +29,7 @@ func (c *ClientController) Post() {
 	cs := c.GetString("clients")
 	cid := c.GetString("cid")
 
-	var clients []device.ConClient
+	var clients []device.ConfClient
 	if err := json.Unmarshal([]byte(cs), &clients); err == nil {
 		c.Ctx.Output.SetStatus(201)
 		err = device.UpdateClient(cid, clients)
