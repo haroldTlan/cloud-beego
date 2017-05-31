@@ -6,6 +6,8 @@ import (
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
 
+	"encoding/json"
+	//"fmt"
 	"math"
 	"runtime"
 	"time"
@@ -28,6 +30,10 @@ func InfoStat() {
 			var dev Device
 			dev.Info = append(dev.Info, info)
 			dev.Ip = info.Ip
+
+			//writing in local
+			var d Drawing
+			d.drawSetting(dev.Info[0])
 			if info.Dev == "storage" {
 				if sameDevice(dev.Ip) {
 					info.Dev = "export"
@@ -39,10 +45,52 @@ func InfoStat() {
 			}
 		}
 		//fmt.Printf("%+v", s.Exports)
+
 		StatTopic.Publish(s)
 		s.CheckStand()
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
+}
+
+func (d Drawing) drawSetting(i StoreView) {
+	if i.Dev == "export" {
+		return
+	}
+	d.Ip = i.Ip
+	d.Dev = i.Dev
+	/*d.Dfs = i.Dfs
+	d.Cpu = i.Cpu
+	d.Mem = i.Mem
+	d.MemT = i.MemT
+	d.Temp = i.Temp*/
+	d.Write = i.Write
+	d.Read = i.Read
+	d.TimeStamp = i.TimeStamp
+	d.CacheT = i.CacheT
+	d.CacheU = i.CacheU
+	d.W_Vol = i.W_Vol
+	d.R_Vol = i.R_Vol
+
+	for _, i := range i.Dfs {
+		if i.Name == "tmp" {
+			d.Tmp = i.Used_per
+		} else if i.Name == "system" {
+			d.System = i.Used_per
+		} else if i.Name == "weed_cpu" {
+			d.WeedCpu = i.Used_per
+		} else if i.Name == "weed_mem" {
+			d.WeedMem = i.Used_per
+		} else if i.Name == "var" {
+			d.Var = i.Used_per
+		}
+
+	}
+
+	first, _ := json.Marshal(d)
+	//second, _ := json.Marshal("\t\n\n")
+	//first = append(first, second[1:5]...)
+	path := beego.AppConfig.String("drawing")
+	WriteConf(path, first)
 }
 
 func sameDevice(ip string) (exist bool) {

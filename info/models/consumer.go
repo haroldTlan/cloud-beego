@@ -100,7 +100,7 @@ func selectMachines(ip string) error {
 func ClearInfos() {
 	for {
 		o := orm.NewOrm()
-		for i, val := range NsqInfos {
+		for _, val := range NsqInfos {
 			exist := o.QueryTable(new(Machine)).Filter("status", true).Filter("ip", val.Ip).Exist()
 			if !exist {
 				delete(NsqInfos, val.Ip)
@@ -108,7 +108,7 @@ func ClearInfos() {
 
 			checkTime, _ := beego.AppConfig.Int("checkpyc")
 			val.Online += -1
-			NsqInfos[i] = val
+			//when online is too low, mail
 			if val.Online == checkTime {
 				Mailing(val.Ip + " info.pyc not running")
 			}

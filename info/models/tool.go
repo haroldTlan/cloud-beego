@@ -4,6 +4,9 @@ import (
 	"github.com/astaxie/beego"
 	"gopkg.in/gomail.v2"
 	"time"
+
+	//"io/ioutil"
+	"os"
 )
 
 func init() {
@@ -72,4 +75,21 @@ func MailDaemon() {
 			}
 		}
 	}()
+}
+
+func WriteConf(path string, yaml []byte) {
+	//yaml := []byte(str)
+
+	fi, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	defer fi.Close()
+
+	//err = ioutil.WriteFile(path, yaml, 0666)
+	res := append(yaml, []byte("\n")...)
+	if _, err = fi.Write(res); err != nil {
+		panic(err)
+	}
+
 }

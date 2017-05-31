@@ -138,3 +138,24 @@ type Journals struct {
 	Level     string    `orm:"column(level);size(64)" json:"level"`
 	Machineid string    `orm:"column(machineid);size(64)" json:"machineid"`
 }
+
+type Drawing struct {
+	Ip  string `json:"ip"`
+	Dev string `json:"dev"`
+	//Cpu       float64 `json:"cpu"`
+	//Mem       float64 `json:"mem"`
+	//MemT      float64 `json:"mem_total"`
+	//Temp      float64 `json:"temp"`
+	Write     float64 `json:"write_mb"`
+	Read      float64 `json:"read_mb"`
+	TimeStamp float64 `json:"timestamp"`
+	CacheT    float64 `json:"cache_total"`
+	CacheU    float64 `json:"cache_used"`
+	W_Vol     float64 `json:"write_vol"`
+	R_Vol     float64 `json:"read_vol"`
+	WeedCpu   float64 `json:"weed_cpu"`
+	WeedMem   float64 `json:"weed_mem"`
+	System    float64 `json:"system_used"`
+	Tmp       float64 `json:"tmp_used"`
+	Var       float64 `json:"var_used"`
+}
