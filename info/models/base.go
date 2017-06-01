@@ -32,8 +32,6 @@ func InfoStat() {
 			dev.Ip = info.Ip
 
 			//writing in local
-			var d Drawing
-			d.drawSetting(dev.Info[0])
 			if info.Dev == "storage" {
 				if sameDevice(dev.Ip) {
 					info.Dev = "export"

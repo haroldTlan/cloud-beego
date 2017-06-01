@@ -5,7 +5,7 @@ import (
 	"gopkg.in/gomail.v2"
 	"time"
 
-	//"io/ioutil"
+	"encoding/json"
 	"os"
 )
 
@@ -87,9 +87,42 @@ func WriteConf(path string, yaml []byte) {
 	defer fi.Close()
 
 	//err = ioutil.WriteFile(path, yaml, 0666)
-	res := append(yaml, []byte("\n")...)
+	res := append(yaml)
 	if _, err = fi.Write(res); err != nil {
 		panic(err)
 	}
 
+}
+
+func DrawSetting(i StoreView) {
+	var d Drawing
+
+	d.Ip = i.Ip
+	d.Dev = i.Dev
+	d.Write = i.Write
+	d.Read = i.Read
+	d.TimeStamp = i.TimeStamp
+	d.CacheT = i.CacheT
+	d.CacheU = i.CacheU
+	d.W_Vol = i.W_Vol
+	d.R_Vol = i.R_Vol
+
+	for _, i := range i.Dfs {
+		if i.Name == "tmp" {
+			d.Tmp = i.Used_per
+		} else if i.Name == "system" {
+			d.System = i.Used_per
+		} else if i.Name == "weed_cpu" {
+			d.WeedCpu = i.Used_per
+		} else if i.Name == "weed_mem" {
+			d.WeedMem = i.Used_per
+		} else if i.Name == "var" {
+			d.Var = i.Used_per
+		}
+
+	}
+
+	first, _ := json.Marshal(d)
+	path := beego.AppConfig.String("drawing")
+	WriteConf(path, append(first, []byte("\n")...))
 }

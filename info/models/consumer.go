@@ -51,6 +51,7 @@ func handle(msg *consumer.Message) {
 				InfoTest(&val, val.Ip)
 			}
 			if val.Dev == "storage" {
+				DrawSetting(val)
 				AddRest(val.Ip, val.Rest) //update rest
 			}
 		}
