@@ -29,6 +29,7 @@ import struct
 import rest
 import db
 from lm import LocationMapping
+from multiprocessing import cpu_count #get cpu_count
 
 __version__ = 'v2.0.0'
 
@@ -451,6 +452,32 @@ class Realtime(object):
 
         return res
 
+    def polls(self):
+        mem_total = []
+        cpu_total = []
+
+        procs = []
+        for p in psutil.process_iter():
+            try:
+                p.dict = p.as_dict(['username', 'nice',
+                                    'get_memory_percent', 'get_cpu_percent',
+                                    'name', 'status'])
+            except psutil.NoSuchProcess:
+                pass
+            else:
+                procs.append(p)
+
+        # return processes sorted by CPU percent usage
+        cpu_processes = sorted(procs, key=lambda p: p.dict['cpu_percent'],
+                           reverse=True)[:5]
+        mem_processes = sorted(procs, key=lambda p: p.dict['memory_percent'],
+                           reverse=True)[:5]
+        for i in mem_processes:
+            mem_total.append(dict(name=i.dict['name'], used=i.dict['memory_percent']))
+        for i in cpu_processes:
+            cpu_total.append(dict(name=i.dict['name'], used=i.dict['cpu_percent']))
+        return cpu_total, mem_total
+
     def stat(self):
         iface = ""
         if time.time() - self._timestamp < 1.0:
@@ -462,6 +489,7 @@ class Realtime(object):
         temp = self._stat_temp()
         mem = vm.percent
         mem_total = vm.total
+	cpu_process, mem_process =self.polls()
 
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
@@ -504,7 +532,8 @@ class Realtime(object):
                   'write_vol': wvol,	#MB/s
 		  'loc': loc,
 		  'gateway': gate,
-		  'fs': fs
+		  'fs': fs,
+		  'process': dict(cpu=cpu_process, mem=mem_process)
                   }
         self._samples.append(sample)
 

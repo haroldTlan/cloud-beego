@@ -29,6 +29,7 @@ import struct
 import rest
 import db
 from lm import LocationMapping
+from multiprocessing import cpu_count #get cpu_count
 
 __version__ = 'v2.0.0'
 
@@ -54,7 +55,6 @@ class Response(mq.IOHandler):
 	    res['read_vol'] = (res['read_vol'] + res_before['read_vol'])/2.0
 	    res['write_vol'] = (res['write_vol'] + res_before['write_vol'])/2.0
         try:
-	    print res['write_mb'], res['read_mb']
             #self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
             self.conn.publish('CloudInfo',json.dumps([res]))
 	except Exception as e:
@@ -367,22 +367,22 @@ class Realtime(object):
         tmp_total = float(val[2]) + float(val[3])
         tmp_used = float(val[3])
         tmp_used_per = float(val[4][:-1])
-	return dict(name=tmp_name, total=tmp_total, available=tmp_used, used_per=tmp_used_per)
+	return dict(name=tmp_name, total=tmp_total, available=tmp_used, used_per=self._format_nr(tmp_used_per))
 
     def _stat_weed_cpu(self):
    	total = 100.0
         weed_cpu_used = 0.0
         name = 'weed_cpu'
-        _used_per = psutil.cpu_percent(0)
+        _used_per = psutil.cpu_percent()
 	available = total - _used_per
         try:
             cpu = commands.getoutput("top -b -n 1 | grep 'weed'")
 	    if len(cpu) >0:
                 for line in cpu.split('\n'):
-        	    weed_cpu_used += float(line.split()[8])/8
+        	    weed_cpu_used += float(line.split()[8])/float(cpu_count())
 	except Exception as e:
             print e
-	return dict(name=name, total=total, available=available, used_per=weed_cpu_used)
+	return dict(name=name, total=total, available=self._format_nr(available), used_per=self._format_nr(weed_cpu_used))
 
     def _stat_weed_mem(self):
         name = 'weed_mem'
@@ -399,7 +399,7 @@ class Realtime(object):
             print e
 	    used_per = 0
 
-        return dict(name=name, total=total, available=available, used_per=used_per)
+        return dict(name=name, total=total, available=self._format_nr(available), used_per=self._format_nr(used_per))
 
     def _weed_mem(self, mem):
         if 'g' in mem:
@@ -468,6 +468,32 @@ class Realtime(object):
 
         return res
 
+    def polls(self):
+        mem_total = []
+        cpu_total = []
+
+        procs = []
+        for p in psutil.process_iter():
+            try:
+                p.dict = p.as_dict(['username', 'nice',
+                                    'get_memory_percent', 'get_cpu_percent',
+                                    'name', 'status'])
+            except psutil.NoSuchProcess:
+                pass
+            else:
+                procs.append(p)
+
+        # return processes sorted by CPU percent usage
+        cpu_processes = sorted(procs, key=lambda p: p.dict['cpu_percent'],
+                           reverse=True)[:5]
+        mem_processes = sorted(procs, key=lambda p: p.dict['memory_percent'],
+                           reverse=True)[:5]
+	for i in mem_processes:
+	    mem_total.append(dict(name=i.dict['name'], used=i.dict['memory_percent']))
+	for i in cpu_processes:
+	    cpu_total.append(dict(name=i.dict['name'], used=i.dict['cpu_percent']))
+	return cpu_total, mem_total
+
     def stat(self):
         iface = ""
         if time.time() - self._timestamp < 1.0:
@@ -479,6 +505,7 @@ class Realtime(object):
         temp = self._stat_temp()
         mem = vm.percent
         mem_total = vm.total
+	cpu_process, mem_process =self.polls()
 
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
@@ -506,12 +533,8 @@ class Realtime(object):
                   'mem' : mem,
                   'mem_total' : mem_total,
                   'temp': temp,
-                  #'read_mb': r,
-                  #'write_mb': w,
-                  #'fread_mb': fr,
-                  #'fwrite_mb': fw,
-                  'read_mb': nr, 	#nread KB/s
-                  'write_mb': nw,       #      KB/s
+                  'read_mb': nr, 	#nread MB/s
+                  'write_mb': nw,       #      MB/s
                   'timestamp': timestamp,
                   'df': df,              #KB
 		  'fs': fs,
@@ -520,7 +543,8 @@ class Realtime(object):
                   'read_vol': rvol,	#MB/s
                   'write_vol': wvol,	#MB/s
 		  'loc': loc,
-		  'gateway': gate
+		  'gateway': gate,
+		  'process': dict(cpu=cpu_process, mem=mem_process)
                   }
         self._samples.append(sample)
 
