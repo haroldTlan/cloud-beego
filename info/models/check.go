@@ -70,7 +70,7 @@ func (s *Statistics) CheckStand() {
 func Check(s *StoreView, ip, devtype string) {
 	var thresh Threshhold
 	o := orm.NewOrm()
-	count := 3 //number of inspections
+	count := 6 //number of inspections
 
 	//cpu
 	cpu := "cpu"
@@ -83,7 +83,7 @@ func Check(s *StoreView, ip, devtype string) {
 				AddLog(err)
 			}
 
-			publish(ip, cpu, devtype, s.Cpu, thresh.Warning)
+			publishLong(ip, cpu, devtype, s.Cpu, thresh.Warning, s.MemT, s.Mem, s.Process)
 		}
 	} else {
 		m[ip][devtype][cpu] = 0
@@ -99,7 +99,7 @@ func Check(s *StoreView, ip, devtype string) {
 			if err != nil {
 				AddLog(err)
 			}
-			publish(ip, mem, devtype, s.Mem, thresh.Warning, s.MemT)
+			publishLong(ip, mem, devtype, s.Mem, thresh.Warning, s.MemT, s.Mem, s.Process)
 		}
 	} else {
 		m[ip][devtype][mem] = 0
@@ -227,7 +227,7 @@ func Check(s *StoreView, ip, devtype string) {
 						AddLog(err)
 					}
 
-					publish(ip, weedMem, devtype, df.Used_per, thresh.Warning, s.MemT, df.Available)
+					publishLong(ip, weedMem, devtype, df.Used_per, thresh.Warning, s.MemT, s.Mem, s.Process) //mem_total,mem_used
 				}
 			} else {
 				m[ip][devtype][weedMem] = 0
@@ -254,23 +254,60 @@ func Check(s *StoreView, ip, devtype string) {
 	}
 }
 
-func publish(ip, typeVal, devtype string, val, warning float64, d ...float64) {
+func publishLong(ip, typeVal, devtype string, val, warning, memTotal, memUsed float64, process map[string][]Pro) {
 	var message string
 
 	if typeVal == "cpu" {
-		message = "CPU超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
+		message = "CPU超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" +
+			"<br><br>" + "Processes: <br>"
+		for _, i := range process["cpu"] {
+			message += i.Name + ":   " + strconv.FormatFloat(i.Used, 'f', 2, 64) + "/100%" + "<br>"
+		}
+
 	} else if typeVal == "mem" {
-		t := strconv.FormatFloat(d[0]/1024/1024/1024, 'f', 1, 64)
-		tMb := strconv.FormatFloat(d[0]/1024/1024, 'f', 1, 64)
-		u := strconv.FormatFloat(d[0]/1024/1024/1024*val/100, 'f', 1, 64)
-		uMb := strconv.FormatFloat(d[0]/1024/1024*val/100, 'f', 1, 64)
-		f := strconv.FormatFloat(d[0]/1024/1024/1024*(1-val/100), 'f', 1, 64)
-		fMb := strconv.FormatFloat(d[0]/1024/1024*(1-val/100), 'f', 1, 64)
+		t := strconv.FormatFloat(memTotal/1024/1024/1024, 'f', 1, 64)
+		tMb := strconv.FormatFloat(memTotal/1024/1024, 'f', 1, 64)
+		u := strconv.FormatFloat(memTotal/1024/1024/1024*val/100, 'f', 1, 64)
+		uMb := strconv.FormatFloat(memTotal/1024/1024*val/100, 'f', 1, 64)
+		f := strconv.FormatFloat(memTotal/1024/1024/1024*(1-val/100), 'f', 1, 64)
+		fMb := strconv.FormatFloat(memTotal/1024/1024*(1-val/100), 'f', 1, 64)
+
+		message = "内存超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
+			"Total: " + t + "G(" + tMb + "M)" + "<br>" +
+			"Used: " + u + "G(" + uMb + "M)" + "<br>" +
+			"Free(含cache): " + f + "G(" + fMb + "M)" +
+			"<br><br>" + "Processes: <br>"
+
+		for _, i := range process["mem"] {
+			message += i.Name + ":   " + strconv.FormatFloat(i.Used, 'f', 2, 64) + "/100%" + "<br>"
+		}
+
+	} else if typeVal == "weedMem" {
+		t := strconv.FormatFloat(memTotal/1024/1024/1024, 'f', 1, 64)
+		tMb := strconv.FormatFloat(memTotal/1024/1024, 'f', 1, 64)
+		u := strconv.FormatFloat(memTotal/1024/1024/1024*val/100, 'f', 1, 64)
+		uMb := strconv.FormatFloat(memTotal/1024/1024*val/100, 'f', 1, 64)
+		f := strconv.FormatFloat(memTotal/1024/1024/1024*(1-memUsed/100), 'f', 1, 64)
+		fMb := strconv.FormatFloat(memTotal/1024/1024*(1-memUsed/100), 'f', 1, 64)
+
 		message = "内存超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
 			"Total: " + t + "G(" + tMb + "M)" + "<br>" +
 			"Used: " + u + "G(" + uMb + "M)" + "<br>" +
 			"Free(含cache): " + f + "G(" + fMb + "M)"
+		if devtype == "export" {
+			message = "minio " + message
+		} else {
+			message = "weed " + message
+		}
+	}
+	Mailing(ip + " " + message)
+}
 
+func publish(ip, typeVal, devtype string, val, warning float64) {
+	var message string
+
+	if typeVal == "cpu" {
+		message = "CPU超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "cache" {
 		message = "阵列缓存超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "systemCap" {
@@ -283,28 +320,14 @@ func publish(ip, typeVal, devtype string, val, warning float64, d ...float64) {
 		message = "tmp文件夹超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 	} else if typeVal == "varCap" {
 		message = "日志区var超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
-	} else if typeVal == "weedMem" {
-		t := strconv.FormatFloat(d[0]/1024/1024/1024, 'f', 1, 64)
-		tMb := strconv.FormatFloat(d[0]/1024/1024, 'f', 1, 64)
-		u := strconv.FormatFloat(d[0]/1024/1024/1024*val/100, 'f', 1, 64)
-		uMb := strconv.FormatFloat(d[0]/1024/1024*val/100, 'f', 1, 64)
-		f := strconv.FormatFloat(d[0]/1024/1024/1024*(1-d[1]/100), 'f', 1, 64)
-		fMb := strconv.FormatFloat(d[0]/1024/1024*(1-d[1]/100), 'f', 1, 64)
+	} else if typeVal == "weedCpu" {
+		message = "minio CPU超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%"
 		if devtype == "export" {
-			message = "minio内存超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
-				"Total: " + t + "G(" + tMb + "M)" + "<br>" +
-				"Used: " + u + "G(" + uMb + "M)" + "<br>" +
-				"Free(含cache): " + f + "G(" + fMb + "M)"
+			message = "minio " + message
 		} else {
-			message = "weed内存超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val, 'f', 1, 64) + "%/100%" + "<br>" +
-				"Total: " + t + "G(" + tMb + "M)" + "<br>" +
-				"Used: " + u + "G(" + uMb + "M)" + "<br>" +
-				"Free(含cache): " + f + "G(" + fMb + "M)"
-
+			message = "weed " + message
 		}
 
-	} else if typeVal == "weedCpu" {
-		message = "minio CPU超过阈值(" + strconv.FormatFloat(warning, 'f', 1, 64) + "%)：" + strconv.FormatFloat(val*8, 'f', 1, 64) + "%/800%"
 	}
 	Mailing(ip + " " + message)
 }
