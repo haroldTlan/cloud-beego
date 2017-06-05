@@ -42,6 +42,7 @@ func NsqInit() {
 }
 
 func NewNsqRequest(topic string, msg interface{}) {
+	fmt.Printf("???\n\n\n%+v\n\n\n???", topic)
 	producer.PublishJSONAsync(topic, msg, nil)
 }
 

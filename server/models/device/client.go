@@ -4,7 +4,6 @@ import (
 	"aserver/models/nsq"
 	"aserver/models/util"
 
-	"errors"
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	"strings"
@@ -23,6 +22,7 @@ type ExportInit struct {
 	Devtype   string    `orm:"column(devtype);size(64);null" json:"devtype"`
 }
 
+//Construction's standard  input
 type ConfClient struct {
 	Ip     string
 	Status bool
@@ -40,26 +40,33 @@ func init() {
 	orm.RegisterModel(new(Client))
 }
 
+//POST
+//select, distribute, send nsq
 func UpdateClient(cid string, clients []ConfClient) (err error) {
+	//create random id
 	setId := util.Urandom()
+
+	//get open or close action
 	client, err := SelectClientIP(cid, clients)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
+	//both open or close numbers
+	count := len(client["open"]) + len(client["close"])
+
+	//Can make it more easy TODO
 	for _, c := range client["open"] {
-		if err = OpenClient(c, cid, setId, len(client["open"])); err != nil {
+		if err = OpenClient(c, cid, setId, count); err != nil {
 			util.AddLog(err)
 			return err
 		}
 	}
 
 	for _, c := range client["close"] {
-		msg := nsq.ClientNsq{Event: "cmd.client.remove", Ip: c, Count: len(client["close"]), Id: setId}
-		fmt.Printf("\n%+v", msg)
-		nsq.NewNsqRequest("storages", msg)
-		//	nsq.NsqRequest("cmd.client.remove", c, "true", "storages")
+		msg := nsq.ClientNsq{Event: "cmd.client.remove", Ip: c, Count: count, Id: setId}
+		nsq.NewNsqRequest("storage", msg)
 	}
 	return
 }
@@ -67,20 +74,21 @@ func UpdateClient(cid string, clients []ConfClient) (err error) {
 //select open or close client's ip
 func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, err error) {
 	o := orm.NewOrm()
+	//collect IP
 	clients = make(map[string][]string)
 	clients["open"] = make([]string, 0)
 	clients["close"] = make([]string, 0)
 
 	for _, client := range cs {
 		var c Client
-		//GUI select the ip
 		if client.Status {
+			//should open
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
 				return clients, err
 			}
-			//sql did not have, create and open
+			//sql did not have, create client and then open it
 			if num == 0 {
 				if err = AddClient(client.Ip, cid); err != nil {
 					util.AddLog(err)
@@ -98,6 +106,7 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 
 			//GUI do not select the ip
 		} else {
+			//should close
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
@@ -105,7 +114,6 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 			}
 			if num == 0 {
 				continue
-
 				//if true, then close
 			} else {
 				if c.Status {
@@ -136,7 +144,7 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 		AddClient(ip, cid)
 	} else {
 		if c.Status {
-			err = errors.New("client is in use")
+			err = fmt.Errorf("client is in use")
 			util.AddLog(err)
 			return
 		}
@@ -149,6 +157,7 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 		return
 	}
 
+	//use rozofsmount should get export's IP
 	for _, dev := range clus.Device {
 		if dev.Devtype == "export" {
 			export = dev.Ip
@@ -156,10 +165,8 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 	}
 
 	if err = util.JudgeIp(export); err == nil {
-
 		msg := nsq.ClientNsq{Event: "cmd.client.add", Ip: ip, Export: export, Count: count, Id: setId}
-		fmt.Printf("\n%+v", msg)
-		nsq.NewNsqRequest("storages", msg)
+		nsq.NewNsqRequest("storage", msg)
 		//nsq.NsqRequest("cmd.client.add", ip, export, "storages")
 	} else {
 		util.AddLog(err)
@@ -226,7 +233,7 @@ func DelClient(ip string) (err error) {
 	}
 
 	if !c.Status {
-		err = errors.New("client is not in use ")
+		err = fmt.Errorf("client is not in use ")
 		util.AddLog(err)
 		return
 	}

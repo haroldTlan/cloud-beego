@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	//"gopkg.in/yaml.v2"
 )
 
 type Export struct {
@@ -49,16 +48,24 @@ func Zoofs(clusterid string, l int) (err error) {
 	if _, err = o.QueryTable("cluster").Filter("uuid", clusterid).All(&clu); err != nil {
 		return
 	}
+	//TODO too easy
 	clu.Zoofs = true
-	o.Update(&clu)
+	if _, err = o.Update(&clu); err != nil {
+		util.AddLog(err)
+		return
+	}
 
 	return
 }
 
 //Delete
 func DelZoofs(cid string) (err error) { //need export's uuid
-	export, storages, _, _ := _GetZoofs(cid)
 	o := orm.NewOrm()
+	export, storages, _, err := _GetZoofs(cid)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
 
 	//client remove
 	/*for _, host := range clients {
@@ -66,8 +73,11 @@ func DelZoofs(cid string) (err error) { //need export's uuid
 	}*/
 
 	//storage remove
+	setId := util.Urandom()
+
 	for _, host := range storages {
-		nsq.NsqRequest("cmd.storage.remove", host, "true", "storages")
+		msg := nsq.StorageNsq{Event: "cmd.storage.remove", Ip: host, Count: len(storages), Id: setId}
+		nsq.NewNsqRequest("storage", msg)
 	}
 
 	//export remove
@@ -146,6 +156,7 @@ func judgeZoofs(export string, expands []string, l int) (err error) {
 }
 
 //Create volume, then export
+//now use volume=1, export=1
 func volExport(export string, expands []string, l int) (err error) {
 	exports_stop := make([]string, 0)
 	volume_create := make([]string, 0)
@@ -166,19 +177,19 @@ func volExport(export string, expands []string, l int) (err error) {
 		return
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	if _, err = rozoCmd("zoofs", volume_create); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	if _, err = rozoCmd("zoofs", exports_create); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	if _, err = rozoCmd("zoofs", exports_start); err != nil {
 		util.AddLog(err)
 		return
@@ -244,6 +255,7 @@ func InsertExports(ip string) error {
 
 //Get storage's cid, sid, slot
 func CliStorageConfig(config RozoRes, storage string) (cid int, sid int, slot string, err error) {
+	//TODO volume=1, export=1
 	vid, cid := 1, 1
 	for _, vol := range config.RozoDetail.Volume {
 		if vol.Cid == cid && vol.Vid == vid {
@@ -259,6 +271,7 @@ func CliStorageConfig(config RozoRes, storage string) (cid int, sid int, slot st
 	return
 }
 
+//use rozofs's source code to get export's configuration
 func CliNodeConfig(export string) (rozo RozoRes, err error) {
 	cmdArgs := make([]string, 0)
 	cmdArgs = append(cmdArgs, "rozofs.py", "--ip", export)
@@ -273,7 +286,8 @@ func CliNodeConfig(export string) (rozo RozoRes, err error) {
 		return
 	}
 
-	if res["status"].(bool) {
+	//false will appear in it when device is not reachable
+	if res["status"].(bool) { //type RozoRes
 		if err = json.Unmarshal([]byte(outs), &rozo); err != nil {
 			return
 		}

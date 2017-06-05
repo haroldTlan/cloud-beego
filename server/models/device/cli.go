@@ -2,7 +2,6 @@ package device
 
 import (
 	"aserver/models/util"
-	"fmt"
 	"github.com/astaxie/beego/orm"
 )
 
@@ -59,29 +58,32 @@ func CliClearAllRozo(export string) (err error) {
 	if _, err = o.QueryTable("export").Filter("ip", export).All(&e); err != nil { //TODO
 		return
 	}
-
+	//TODO volume=1, export=1
 	eRemove = append(eRemove, "export", "remove", "1", "-E", e.Ip, "--force")
 	vRemove = append(vRemove, "volume", "remove", "-v", "1", "-E", e.Ip)
 
-	_, err = rozoCmd("zoofs", eRemove)
-	if err != nil {
+	if _, err = rozoCmd("zoofs", eRemove); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	_, err = rozoCmd("zoofs", vRemove)
-	if err != nil {
+	if _, err = rozoCmd("zoofs", vRemove); err != nil {
 		util.AddLog(err)
 		return
 	}
 
+	//TODO
 	ClearZoofs(e.Clusterid)
+
 	var clu Cluster //make zoofs false
 	if _, err = o.QueryTable("cluster").Filter("uuid", e.Clusterid).All(&clu); err != nil {
 		return
 	}
 	clu.Zoofs = false
-	o.Update(&clu)
+	if _, err = o.Update(&clu); err != nil {
+		util.AddLog(err)
+		return
+	}
 
 	return
 }
@@ -96,8 +98,6 @@ func ClearZoofs(cid string) (err error) {
 	}
 
 	for key, val := range devs {
-		fmt.Println(key, val)
-
 		if key == "export" {
 			_clearExport(val)
 		}

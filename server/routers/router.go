@@ -105,6 +105,7 @@ func init() {
 			),
 		),
 
+		//create rozofs system, delete rozofs system.
 		beego.NSNamespace("/zoofs",
 			beego.NSInclude(
 				&controllers.ZoofsController{},

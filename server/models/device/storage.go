@@ -4,7 +4,7 @@ import (
 	"aserver/models/nsq"
 	"aserver/models/util"
 
-	"fmt"
+	_ "fmt"
 	"github.com/astaxie/beego/orm"
 	"strconv"
 )
@@ -35,7 +35,7 @@ func RestInit(v []Rest) (err error) {
 	setId := util.Urandom()
 	for _, host := range v {
 		msg := StorageMsg(host, len(v), setId)
-		nsq.NewNsqRequest("storages", msg)
+		nsq.NewNsqRequest("storage", msg)
 		//detail := host.Level + "*" + host.Loc //strings.Join(host.Level, host.Loc, "*")
 		//nsq.NsqRequest("cmd.storage.build", host.Ip, detail, "storages")
 	}
@@ -66,19 +66,16 @@ func StorageMsg(host Rest, count int, setId string) (msg nsq.StorageNsq) {
 		if sd.Ip == host.Ip {
 			for _, s := range sd.Storage {
 				if s.Cid == cid {
-					fmt.Printf("%+v\n", sd)
 					msg.Mount = s.Root + "/0"
 				}
 			}
-
 		}
 	}
 	return
 }
 
-func RestRemove(clusterid string) (err error) {
-	fmt.Println(clusterid)
-
+//TODO
+func RestRemove(a string) (err error) {
 	return
 }
 
