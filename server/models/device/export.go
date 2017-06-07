@@ -27,24 +27,24 @@ func init() {
 	orm.RegisterModel(new(Export))
 }
 
-//POST init rozofs's system
+// POST init rozofs's system
 func Zoofs(clusterid string, l int) (err error) {
 	o := orm.NewOrm()
 
-	//Get export & storages's ip
+	// Get export & storages's ip
 	export, expands, _, err := _GetZoofs(clusterid)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	//Error Handing  and init rozofs
+	// Error Handing and init rozofs
 	if err = judgeZoofs(export, expands, l); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	var clu Cluster //make zoofs true
+	var clu Cluster // make zoofs true
 	if _, err = o.QueryTable("cluster").Filter("uuid", clusterid).All(&clu); err != nil {
 		return
 	}
@@ -58,8 +58,8 @@ func Zoofs(clusterid string, l int) (err error) {
 	return
 }
 
-//Delete
-func DelZoofs(cid string) (err error) { //need export's uuid
+// Delete
+func DelZoofs(cid string) (err error) { // need export's uuid
 	o := orm.NewOrm()
 	export, storages, _, err := _GetZoofs(cid)
 	if err != nil {
@@ -67,12 +67,12 @@ func DelZoofs(cid string) (err error) { //need export's uuid
 		return
 	}
 
-	//client remove
+	// client remove
 	/*for _, host := range clients {
 		nsq.NsqRequest("cmd.client.remove", host, "true", "storages")
 	}*/
 
-	//storage remove
+	// storage remove
 	setId := util.Urandom()
 
 	for _, host := range storages {
@@ -80,7 +80,7 @@ func DelZoofs(cid string) (err error) { //need export's uuid
 		nsq.NewNsqRequest("storage", msg)
 	}
 
-	//export remove
+	// export remove
 	if exist := o.QueryTable(new(Export)).Filter("ip", export).Exist(); !exist {
 		err = errors.New("export is not exist")
 		util.AddLog(err)
@@ -94,7 +94,7 @@ func DelZoofs(cid string) (err error) { //need export's uuid
 	return
 }
 
-//Use cid to get export & expands
+// Use cid to get export & expands
 func _GetZoofs(cid string) (export string, expand []string, client []string, err error) {
 	clus, err := GetClustersByCid(cid)
 	if err != nil {
@@ -115,13 +115,13 @@ func _GetZoofs(cid string) (export string, expand []string, client []string, err
 	return
 }
 
-//Error Handing  and init rozofs
+// Error Handing  and init rozofs
 func judgeZoofs(export string, expands []string, l int) (err error) {
 	levelJudge := map[int]bool{
 		0: true, 1: true, 2: true,
 	}
 
-	//Ip error handing
+	// Ip error handing
 	if err = util.JudgeIp(export); err != nil {
 		util.AddLog(err)
 		return
@@ -133,7 +133,7 @@ func judgeZoofs(export string, expands []string, l int) (err error) {
 		}
 	}
 
-	//level judging
+	// level judging
 	if !levelJudge[l] {
 		return fmt.Errorf("choose from 0, 1, 2")
 	}
@@ -155,8 +155,8 @@ func judgeZoofs(export string, expands []string, l int) (err error) {
 	return
 }
 
-//Create volume, then export
-//now use volume=1, export=1
+// Create volume, then export
+// now use volume=1, export=1
 func volExport(export string, expands []string, l int) (err error) {
 	exports_stop := make([]string, 0)
 	volume_create := make([]string, 0)
@@ -203,7 +203,7 @@ func volExport(export string, expands []string, l int) (err error) {
 	return
 }
 
-//Change export and storages's details
+// Change export and storages's details
 func zoofsInsert(export string, expands []string) (err error) {
 	if err = InsertExports(export); err != nil {
 		util.AddLog(err)
@@ -230,7 +230,7 @@ func zoofsInsert(export string, expands []string) (err error) {
 	return
 }
 
-//Change Export's status
+// Change Export's status
 func InsertExports(ip string) error {
 	o := orm.NewOrm()
 
@@ -253,7 +253,7 @@ func InsertExports(ip string) error {
 	return nil
 }
 
-//Get storage's cid, sid, slot
+// Get storage's cid, sid, slot
 func CliStorageConfig(config RozoRes, storage string) (cid int, sid int, slot string, err error) {
 	//TODO volume=1, export=1
 	vid, cid := 1, 1
@@ -271,7 +271,7 @@ func CliStorageConfig(config RozoRes, storage string) (cid int, sid int, slot st
 	return
 }
 
-//use rozofs's source code to get export's configuration
+// use rozofs's source code to get export's configuration
 func CliNodeConfig(export string) (rozo RozoRes, err error) {
 	cmdArgs := make([]string, 0)
 	cmdArgs = append(cmdArgs, "rozofs.py", "--ip", export)
@@ -286,7 +286,7 @@ func CliNodeConfig(export string) (rozo RozoRes, err error) {
 		return
 	}
 
-	//false will appear in it when device is not reachable
+	// false will appear in it when device is not reachable
 	if res["status"].(bool) { //type RozoRes
 		if err = json.Unmarshal([]byte(outs), &rozo); err != nil {
 			return
@@ -299,7 +299,7 @@ func CliNodeConfig(export string) (rozo RozoRes, err error) {
 	return
 }
 
-//Cmd
+// Cmd
 func rozoCmd(name string, cmdArgs []string) (output string, err error) {
 	cmd := exec.Command(name, cmdArgs...)
 
@@ -311,7 +311,7 @@ func rozoCmd(name string, cmdArgs []string) (output string, err error) {
 	// Execute command
 	err = cmd.Run() // will wait for command to return
 
-	//Cmd's Error Handing for rozofs
+	// Cmd's Error Handing for rozofs
 	fails := []string{"FAILED", "usage", "failed"}
 	for _, val := range fails {
 		if strings.Index(string(w.Bytes()), val) >= 0 {
