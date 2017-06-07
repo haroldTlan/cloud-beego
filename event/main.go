@@ -1,57 +1,44 @@
 package main
 
 import (
-	"cloud/logger"
-	"cloud/topic"
-	"github.com/googollee/go-socket.io"
-	"net/http"
-	"time"
+	"flag"
+
+	"event/controllers"
+	"event/models/nsq"
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-var eventTopic = topic.New()
-var ChanLogEvent chan Log
+var (
+	nsq_ip       = beego.AppConfig.String("nsq") + ":" + beego.AppConfig.String("nsq_port")
+	nsqdAddr     = flag.String("nsqd", nsq_ip, "nsqd http address")
+	maxInFlight  = flag.Int("max-in-flight", 200, "Maximum amount of messages in flight to consume")
+	registerIp   = beego.AppConfig.String("registerDB")
+	registerPort = beego.AppConfig.String("registerPort")
+)
+
+func init() {
+	orm.RegisterDataBase("default", "mysql", "root:passwd@tcp("+registerIp+":"+registerPort+")/speediodb?charset=utf8&loc=Local")
+
+	//setting log, type event
+	logs.SetLogger(logs.AdapterFile, `{"filename":"/var/log/zoofsmonitor.log","daily":false,"maxdays":365,"level":3}`)
+	logs.EnableFuncCallDepth(true)
+	logs.Async()
+}
 
 func main() {
-	ChanLogEvent = make(chan Log, 1)
+	flag.Parse()
 
-	loggerChannel()
-	Initdb()
+	//init nsq and get events from pubs
+	go nsq.RunConsumer(*maxInFlight, *nsqdAddr)
 
-	//init nsq and get infos from pubs
-	go RunConsumer(*maxInFlight, *nsqdAddr)
-	socket()
-}
+	beego.Router("/ws/event", &controllers.WebSocketController{}, "get:Join")
 
-func socket() {
-	sio := socketio.NewSocketIOServer(&socketio.Config{})
-	sio.Of("/event").On("connect", func(ns *socketio.NameSpace) {
-		AddLogtoChan(nil)
-		go func(ns *socketio.NameSpace) {
-			sub := eventTopic.Subscribe()
-			defer eventTopic.Unsubscribe(sub)
-			for {
-				e := <-sub
-				if err := ns.Emit("event", e); err != nil {
-					//AddLogtoChan(err)
-					return
-				}
-			}
-		}(ns)
-	})
-
-	sio.Handle("/socket.io/", sio)
-	http.ListenAndServe(":8012", sio)
-}
-
-func loggerChannel() {
-	go func() {
-		for {
-			time.Sleep(4 * time.Second)
-			select {
-			case v := <-ChanLogEvent:
-				logger.OutputLogger(v.Level, v.Message)
-			default:
-			}
-		}
-	}()
+	if beego.BConfig.RunMode == "dev" {
+		beego.BConfig.WebConfig.DirectoryIndex = true
+		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
+	}
+	beego.Run()
 }
