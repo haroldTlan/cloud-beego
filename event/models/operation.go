@@ -3,9 +3,6 @@ package models
 import (
 	"event/models/util"
 	"github.com/astaxie/beego/orm"
-
-	"fmt"
-	"time"
 )
 
 // Setting Client
@@ -125,34 +122,19 @@ func RpcSetting(resEvent string, values map[string]interface{}) (count float64) 
 	return
 }
 
-func RefreshOverViews(ip, event string) error {
-	if err := InsertEmergencys(event, ip); err != nil {
-		return err
+// ordinary event
+// Insert table emergency
+// special event to do special operation
+func RefreshOverViews(ip, event string) (err error) {
+	if err = InsertEmergencys(event, ip); err != nil {
+		util.AddLog(err)
+		return
 	}
 
-	/*_, one, err := SelectMachine(ip)
-	if err != nil {
-		return err
-	}
-	if err := MulAttention(ip, event); err != nil { //mul email sending
-		return err
-	}*/
-
-	switch event {
-
-	//when offline, delete infos from machine then change machine's status
-	case "ping.offline":
-		/*if err := DeleteMachine(one.Uuid); err != nil {
+	/*
+		if err := MulAttention(ip, event); err != nil { //mul email sending TODO
 			return err
 		}*/
-
-		//nothing happened, status is True, the infos will insert in it.
-	case "ping.online":
-		fmt.Println("online!!!!")
-		time.Sleep(4 * time.Second)
-
-	default:
-	}
 
 	return nil
 }

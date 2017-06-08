@@ -1,18 +1,52 @@
 package models
 
 import (
+	"event/models/util"
+	"fmt"
 	"github.com/astaxie/beego/orm"
-
 	"time"
 )
 
 func Initdb() {
-	//orm.RegisterModel(new(Storage), new(Cluster), new(Client), new(Fs), new(Journals), new(Machine), new(Disks), new(Raids), new(Volumes), new(Initiators), new(Emergency), new(Mail), new(Journal))
+	orm.RegisterModel(new(Storage), new(Cluster), new(Client), new(Fs), new(Journals), new(Machine), new(Disks), new(Raids), new(Volumes), new(Initiators), new(Emergency), new(Mail))
+}
+
+// DeleteMachine deletes Machine by MachineId and returns error if
+// the record to be deleted doesn't exist
+func DeleteMachine(uuid string) (err error) {
+	o := orm.NewOrm()
+
+	// ascertain id exists in the database
+	if exist := o.QueryTable(new(Machine)).Filter("uuid", uuid).Exist(); exist {
+		if _, err = o.QueryTable(new(Disks)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+		if _, err = o.QueryTable(new(Raids)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+		if _, err = o.QueryTable(new(Volumes)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+		if _, err = o.QueryTable(new(Initiators)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+		if _, err = o.QueryTable(new(Fs)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+		if _, err = o.QueryTable(new(Journals)).Filter("machineid", uuid).Delete(); err != nil {
+			return
+		}
+	} else {
+		err = fmt.Errorf("uuid not exits")
+		return
+	}
+	return nil
 }
 
 func InsertEmergencys(event, machine string) error {
 	o := orm.NewOrm()
 	var one Emergency
+
 	switch event {
 	case "ping.offline", "disk.unplugged", "raid.degraded", "volume.failed", "raid.failed", "info.warning":
 		one.Level = "warning"
@@ -31,6 +65,7 @@ func InsertEmergencys(event, machine string) error {
 	one.Updated_at = time.Now()
 	if _, err := o.Insert(&one); err != nil {
 		//AddLogtoChan(err)
+		util.AddLog(err)
 		return err
 	}
 

@@ -86,12 +86,14 @@ func eventJugde(values map[string]interface{}) (result interface{}) {
 		return nil
 
 	default:
-		// ordinary event setting
+
+		// whether the machine is being monitored
 		machineId, err := Analyze(values["ip"].(string))
 		if err != nil {
 			return err
 		}
 
+		// ordinary event setting
 		result = newEvent(values, machineId)
 		if _, ok := result.(error); ok {
 			util.AddLog(err)
