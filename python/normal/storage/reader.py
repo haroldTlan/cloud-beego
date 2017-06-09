@@ -28,7 +28,10 @@ print aim
 def handler(message):
     try:
         #manage(json.loads(message.body))
+	message.finish
+	print message.body
         cmd(json.loads(message.body))
+
         return True
     except Exception,ex:
         print ex
@@ -65,6 +68,7 @@ def cmd(events):
 		os.system("echo 'zoofsmount -H %s  -E /srv/zoofs/exports/export_1/ /mnt/zoofs/' >> /etc/rc.step3"%events['export'])
 		os.system("service samba restart")
 		os.system("chmod 777 -R /mnt/zoofs")
+
 		pubClient('cmd.client.add',True,"success", events['count'], events['id'])
 	    else:
 		pubClient('cmd.client.add',False, ','.join(result.split('\n')), events['count'], events['id'])
@@ -73,21 +77,22 @@ def cmd(events):
 	    result = commands.getoutput("umount zoofs")
 	    os.system("sed -i '/zoofsmount/d' /etc/rc.step3")
 	    if result == '':
-		pubClient('cmd.client.remove',True,"success", events['count'], events['id'])
+		#there is no output, when umount success
+		pubClient('cmd.client.remove', True, "success", events['count'], events['id'])
 	    else:
-		pubClient('cmd.client.add',False, ','.join(result.split('\n')), events['count'], events['id'])
+		pubClient('cmd.client.add', False, ','.join(result.split('\n')), events['count'], events['id'])
 
         elif events['event'] == 'cmd.storage.build':
 	    level = events['level']
 	    loc = events['loc']
-            mountpoint =events['mountpoint'] 
+            mountpoint =events['mountpoint']
 
-	    status, detail = addDev(level, loc, mountpoint)
-	    pub('cmd.storage.build', status, detail)
+	    status, result = addDev(level, loc, mountpoint)
+	    pubClient('cmd.storage.build', status, ','.join(result.split('\n')), events['count'], events['id'])
 
         elif events['event'] == 'cmd.storage.remove':
-	    delete_all()
-	    pub('cmd.storage.remove', False, "success")
+	    result = delete_all()
+	    pubClient('cmd.storage.remove', True, "success", events['count'], events['id'])
 
 
 def pubClient(event, status, detail, count, setid):
@@ -110,5 +115,5 @@ def pub(event, status,detail):
 
 r = nsq.Reader(message_handler=handler,
         nsqd_tcp_addresses=[aim],
-        topic='storages', channel=get_ip_address(), lookupd_poll_interval=15)
+        topic='storage', channel=get_ip_address(), lookupd_poll_interval=15)
 nsq.run()

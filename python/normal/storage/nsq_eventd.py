@@ -86,7 +86,7 @@ class UEventSub(mq.Subscriber, mq.IOHandler):
                 pass
 
     def get_ip_address(self):
-        INTERFACE = ['eth0','br0','eth1','br1']
+        INTERFACE = ['eth0','eth1']
         ifaces = network.ifaces().values()
         for i in INTERFACE:
             for j in ifaces:
@@ -312,7 +312,7 @@ class EventDaemon(Daemon):
 	self.publish(line,)
 
     def get_ip_address(self):
-        INTERFACE = ['eth0','br0','eth1','br1']
+        INTERFACE = ['eth0', 'eth1']
         ifaces = network.ifaces().values()
         for i in INTERFACE:
             for j in ifaces:
@@ -322,22 +322,19 @@ class EventDaemon(Daemon):
     def publish(self, result):
 	o={}
 	try:
-    	    a=json.loads(result.replace("\n",""))
+    	    res=json.loads(result.replace("\n",""))
 	except:
+	    
 	    pass
 
-	if a['event'] == 'cmd.client.add' or a['event'] == 'cmd.client.remove':
-	    o['event'] = a['event']
+	settingEvent = ['cmd.client.add', 'cmd.client.remove', 'cmd.storage.build', 'cmd.storage.remove']
+	if res['event'] in settingEvent:
+	    o['event'] = res['event']
             o['ip'] = self.get_ip_address()
-            o['detail'] = a['detail']
-            o['status'] = a['status']
-	    o['count'] = a['count']
-	    o['id'] = a['id']
-	else:
-            o['event'] = a['event']
-            o['ip'] = self.get_ip_address()
-	    o['detail'] = a['detail']
-    	    o['result'] = a['status']
+            o['detail'] = res['detail']
+            o['status'] = res['status']
+            o['count'] = res['count']
+            o['id'] = res['id']
 	try:
             result = json.dumps(o)
 	except:

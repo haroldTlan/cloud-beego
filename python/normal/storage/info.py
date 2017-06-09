@@ -55,7 +55,6 @@ class Response(mq.IOHandler):
 	    res['read_vol'] = (res['read_vol'] + res_before['read_vol'])/2.0
 	    res['write_vol'] = (res['write_vol'] + res_before['write_vol'])/2.0
         try:
-	    print res['write_mb'], res['read_mb']
             #self.conn.publish('CloudInfo',json.dumps(list(self._realtime)[-1:]))
             self.conn.publish('CloudInfo',json.dumps([res]))
 	except Exception as e:
@@ -363,7 +362,7 @@ class Realtime(object):
             cpu = commands.getoutput("top -b -n 1 | grep 'weed'")
 	    if len(cpu) >0:
                 for line in cpu.split('\n'):
-        	    weed_cpu_used += float(line.split()[8])/8
+        	    weed_cpu_used += float(line.split()[8])/float(cpu_count())
 	except Exception as e:
             print e
 	return dict(name=name, total=total, available=available, used_per=weed_cpu_used)
