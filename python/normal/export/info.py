@@ -20,13 +20,14 @@ from caused import ignore_exc
 from util import execute
 import mq
 import psutil
-#import network
+import gnsq
+import network
 
 import commands
-import gnsq
+
 import struct
 
-__version__ = 'v1.0.0'
+#__version__ = 'v2.0.0' recover when no weed, str to float's bug
 
 class Response(mq.IOHandler):
     def __init__(self,conn):
@@ -75,18 +76,13 @@ class Realtime(object):
         self._network_wbytes = 0
         self._cache_tbytes = 0
         self._cache_ubytes = 0
-        self._ifaces = [dict(name="eth0"), dict(name="eth1")]
-#        self._ifaces = network.ifaces().values()
+        self._ifaces = network.ifaces().values()
 	self._tmp_total = 0
 	self._tmp_used = 0
 	self._tmp_used_per = 0
         self._vol_rbytes = 0
         self._vol_wbytes = 0
 	self._df = []
-
-	#Yan
-        self._weed_cpu = 0
-        self._weed_mem = 0      
 
     def _flow(self, path, prev):
         try:
@@ -217,16 +213,16 @@ class Realtime(object):
 	return dict(name=tmp_name, total=tmp_total, available=tmp_used, used_per=tmp_used_per)
 
     def _stat_weed_cpu(self):
+       	total = 100.0
+	used_per = psutil.cpu_percent(0)
+	available = total - used_per
         try:
             name = 'weed_cpu'
             cpu = commands.getoutput("top -b -n 1 | grep 'minio' | head -1 | awk \'{printf(\"%0.1f\"),$9/8}\'")
             self._weed_cpu = float(cpu)
-       	    total = 100.0
-            used_per = psutil.cpu_percent(0)
-	    available = total - used_per
+
 	except Exception as e:
             print e
-            print cpu
 	return dict(name=name, total=total, available=available, used_per=self._weed_cpu)
 
     def _stat_weed_mem(self):
@@ -249,6 +245,7 @@ class Realtime(object):
                 self._weed_mem = float(mem)/1024/1024
         except:
                 self._weed_mem = 0
+	        used_per = 0.0
 	available = self._format_nr(float(vm.total-vm.used)/vm.total*100)
 
         return dict(name=name, total=total, available=available, used_per=used_per)
@@ -286,7 +283,7 @@ class Realtime(object):
             self._network_wbytes = wsum
             return self._format_nr(r/interval/1024/1024), self._format_nr(w/interval/1024/1024)
         except:
-            return 0,0'''
+            return 0,0
 
     def get_ip_address(self,ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -294,7 +291,15 @@ class Realtime(object):
             s.fileno(),
             0x8915,  # SIOCGIFADDR
             struct.pack('256s', ifname[:15])
-        )[20:24])
+        )[20:24])'''
+
+    def get_ip_address(self):
+        INTERFACE = ['eth0','eth1']
+        ifaces = network.ifaces().values()
+        for i in INTERFACE:
+            for j in ifaces:
+                if j.name == i and j.link:
+                    return j.ipaddr
 
     def _dev(self):
         try:
@@ -322,29 +327,22 @@ class Realtime(object):
 
         r, w = self._stat_flow()
         fr,fw = self._stat_fs_flow()
-#        nr,nw = self._stat_ifaces_flow()        storage
         nr,nw = self._stat_ifaces_flow_dev()				#export
         rvol,wvol = self._stat_devices_flow()
 	df = self._stat_df()
 	rd_t,rd_u = self._stat_cache()
-        self._timestamp = time.time()
 
-	#Yan
-	df.append(self._stat_weed_cpu())
-	df.append(self._stat_weed_mem())
+
 	gate = self._stat_gateway()
-	iface = self.get_ip_address("eth0")
+	iface = self.get_ip_address()
         timestamp = self._format_nr(self._timestamp)
+        self._timestamp = time.time()
         sample = {'ip' : iface,
                   'dev' : 'export',
 		  'cpu' : cpu,
                   'mem' : mem,
                   'mem_total' : mem_total,
                   'temp': temp,
-                  #'read_mb': r,
-                  #'write_mb': w,
-                  #'fread_mb': fr,
-                  #'fwrite_mb': fw,
                   'read_mb': nr, 	#nread KB/s
                   'write_mb': nw,
                   'timestamp': timestamp,
@@ -355,7 +353,7 @@ class Realtime(object):
                   'write_vol': wvol,
 		  'gateway': gate
                   }
-	print gate
+	print sample
         self._samples.append(sample)
 
     def __iter__(self):
@@ -370,7 +368,7 @@ class Realtime(object):
 class SpeedioDaemon(Daemon):
     def init(self):
         self._poller = mq.Poller()
-	conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.port)
+	conn = gnsq.Nsqd(address=config.zoofs.ip, http_port=config.zoofs.publish_port)
         self._rsp = Response(conn)
         self._poller.register(self._rsp)
 

@@ -1,0 +1,11 @@
+umount zoofs
+cp /home/monitor/export.conf.clean /zbx/etc/zoofs/export.conf
+cp /home/monitor/storage.conf.clean /zbx/etc/zoofs/storage.conf
+
+
+
+/etc/init.d/zoofs-exportd reload
+sleep 3
+/etc/init.d/zoofs-storaged reload
+sleep 3
+/etc/init.d/zoofs-manager-agent restart

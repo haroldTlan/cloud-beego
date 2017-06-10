@@ -31,7 +31,7 @@ import db
 from lm import LocationMapping
 from multiprocessing import cpu_count #get cpu_count
 
-__version__ = 'v2.0.0'
+#__version__ = 'v2.0.0' add w & r's average
 
 class Response(mq.IOHandler):
     def __init__(self,conn):
