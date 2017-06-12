@@ -98,7 +98,7 @@ func init() {
 			),
 		),
 
-		//clusters setting, getting, deleting
+		//clusters setting, getting, delete
 		beego.NSNamespace("/cluster",
 			beego.NSInclude(
 				&controllers.ClustersController{},

@@ -22,7 +22,7 @@ type ExportInit struct {
 	Devtype   string    `orm:"column(devtype);size(64);null" json:"devtype"`
 }
 
-//Construction's standard  input
+// construction's standard  input
 type ConfClient struct {
 	Ip     string
 	Status bool
@@ -40,23 +40,38 @@ func init() {
 	orm.RegisterModel(new(Client))
 }
 
-//POST
-//select, distribute, send nsq
+// POST
+// select, distribute, send nsq
 func UpdateClient(cid string, clients []ConfClient) (err error) {
-	//create random id
+	// create random id
 	setId := util.Urandom()
 
-	//get open or close action
+	// get export's ip
+	var export string
+	clus, _ := GetClustersByCid(cid)
+	for _, dev := range clus.Device {
+		if dev.Devtype == "export" {
+			export = dev.Ip
+		}
+	}
+
+	// checking export's status
+	if _, err = CliNodeConfig(export); err != nil {
+		util.AddLog(err)
+		return
+	}
+
+	// get open or close action
 	client, err := SelectClientIP(cid, clients)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	//both open or close numbers
+	// both open or close numbers
 	count := len(client["open"]) + len(client["close"])
 
-	//Can make it more easy TODO
+	// Can make it more easy TODO
 	for _, c := range client["open"] {
 		if err = OpenClient(c, cid, setId, count); err != nil {
 			util.AddLog(err)
@@ -71,10 +86,10 @@ func UpdateClient(cid string, clients []ConfClient) (err error) {
 	return
 }
 
-//select open or close client's ip
+// select open or close client's ip
 func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, err error) {
 	o := orm.NewOrm()
-	//collect IP
+	// collect IP
 	clients = make(map[string][]string)
 	clients["open"] = make([]string, 0)
 	clients["close"] = make([]string, 0)
@@ -82,13 +97,13 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 	for _, client := range cs {
 		var c Client
 		if client.Status {
-			//should open
+			// should open
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
 				return clients, err
 			}
-			//sql did not have, create client and then open it
+			// sql did not have, create client and then open it
 			if num == 0 {
 				if err = AddClient(client.Ip, cid); err != nil {
 					util.AddLog(err)
@@ -96,7 +111,7 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 				}
 				clients["open"] = append(clients["open"], client.Ip)
 			} else {
-				//the client has been opened, then continue
+				// the client has been opened, then continue
 				if c.Status {
 					continue
 				} else {
@@ -104,9 +119,9 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 				}
 			}
 
-			//GUI do not select the ip
+			// GUI do not select the ip
 		} else {
-			//should close
+			// should close
 			num, err := o.QueryTable(new(Client)).Filter("clusterid", cid).Filter("ip", client.Ip).All(&c)
 			if err != nil {
 				util.AddLog(err)
@@ -114,7 +129,7 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 			}
 			if num == 0 {
 				continue
-				//if true, then close
+				// if true, then close
 			} else {
 				if c.Status {
 					clients["close"] = append(clients["close"], client.Ip)
@@ -127,7 +142,7 @@ func SelectClientIP(cid string, cs []ConfClient) (clients map[string][]string, e
 	return
 }
 
-//POST create one client
+// POST create one client
 func OpenClient(ip, cid, setId string, count int) (err error) {
 	o := orm.NewOrm()
 
@@ -139,7 +154,7 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 		return
 	}
 
-	//whether in use
+	// whether in use
 	if num == 0 {
 		AddClient(ip, cid)
 	} else {
@@ -150,14 +165,14 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 		}
 	}
 
-	//get cluster's infos
+	// get cluster's infos
 	clus, err := GetClustersByCid(cid)
 	if err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	//use rozofsmount should get export's IP
+	// use rozofsmount should get export's IP
 	for _, dev := range clus.Device {
 		if dev.Devtype == "export" {
 			export = dev.Ip
@@ -167,7 +182,7 @@ func OpenClient(ip, cid, setId string, count int) (err error) {
 	if err = util.JudgeIp(export); err == nil {
 		msg := nsq.ClientNsq{Event: "cmd.client.add", Ip: ip, Export: export, Count: count, Id: setId}
 		nsq.NewNsqRequest("storage", msg)
-		//nsq.NsqRequest("cmd.client.add", ip, export, "storages")
+		// nsq.NsqRequest("cmd.client.add", ip, export, "storages")
 	} else {
 		util.AddLog(err)
 		return
@@ -215,17 +230,17 @@ func DelClient(cid string) (err error) {
 	return
 }*/
 
-//POST delete one client
+// POST delete one client
 func DelClient(ip string) (err error) {
 	o := orm.NewOrm()
 
-	//whether vaild Ip
+	// whether vaild Ip
 	if err = util.JudgeIp(ip); err != nil {
 		util.AddLog(err)
 		return
 	}
 
-	//whether in use
+	// whether in use
 	var c Client
 	if _, err = o.QueryTable(new(Client)).Filter("ip", ip).All(&c); err != nil {
 		util.AddLog(err)

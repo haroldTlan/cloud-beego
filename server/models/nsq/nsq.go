@@ -2,7 +2,7 @@ package nsq
 
 import (
 	"encoding/json"
-	"fmt"
+	_ "fmt"
 	"github.com/astaxie/beego"
 	"github.com/crackcomm/nsqueue/producer"
 )
@@ -42,13 +42,11 @@ func NsqInit() {
 }
 
 func NewNsqRequest(topic string, msg interface{}) {
-	fmt.Printf("???\n\n\n%+v\n\n\n???", topic)
 	producer.PublishJSONAsync(topic, msg, nil)
 }
 
 func NsqRequest(event, ip, status, topic string) {
 	buffer := eventType(event, ip, status)
-	fmt.Printf("\n\n\n%+v\n\n\n", string(buffer))
 	producer.PublishAsync(topic, buffer, nil)
 }
 

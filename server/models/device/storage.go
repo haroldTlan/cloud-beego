@@ -31,6 +31,8 @@ func init() {
 	orm.RegisterModel(new(Storage))
 }
 
+// Gui's order
+// machine's ip, disks's slot(host.Loc), raid's level,
 func RestInit(v []Rest) (err error) {
 	setId := util.Urandom()
 	for _, host := range v {
@@ -43,6 +45,8 @@ func RestInit(v []Rest) (err error) {
 	return
 }
 
+// Get storage's infos
+// Mountpoint, Setting id(like uuid)
 func StorageMsg(host Rest, count int, setId string) (msg nsq.StorageNsq) {
 	o := orm.NewOrm()
 	level, _ := strconv.Atoi(host.Level)
@@ -58,9 +62,13 @@ func StorageMsg(host Rest, count int, setId string) (msg nsq.StorageNsq) {
 		}
 	}
 
-	configs, _ := CliNodeConfig(export)
+	configs, err := CliNodeConfig(export)
+	if err != nil {
+		util.AddLog(err)
+		return
+	}
 
-	cid := 1
+	cid := 1 //TODO
 
 	for _, sd := range configs.RozoDetail.Storaged {
 		if sd.Ip == host.Ip {
@@ -74,20 +82,19 @@ func StorageMsg(host Rest, count int, setId string) (msg nsq.StorageNsq) {
 	return
 }
 
-//TODO
+// TODO
 func RestRemove(a string) (err error) {
 	return
 }
 
-//when zoofs created success
+// when zoofs created success
 //
-func InsertStorages(export string, ip string, cid int, sid int, slot string) error {
+func InsertStorages(export string, ip string, cid int, sid int, slot string) (err error) {
 	o := orm.NewOrm()
 
 	var one Storage
-	num, err := o.QueryTable("storage").Filter("ip", ip).All(&one)
-	if err != nil {
-		return err
+	if _, err = o.QueryTable("storage").Filter("ip", ip).All(&one); err != nil {
+		return
 	}
 
 	one.Cid = cid
@@ -95,14 +102,10 @@ func InsertStorages(export string, ip string, cid int, sid int, slot string) err
 	one.Slot = slot
 	one.Master = export
 	one.Status = true
-	if num == 0 {
-		if _, err := o.Insert(&one); err != nil {
-			return err
-		}
-	} else {
-		if _, err := o.Update(&one); err != nil {
-			return err
-		}
+	if _, err = o.Update(&one); err != nil {
+		util.AddLog(err)
+		return
 	}
-	return nil
+
+	return
 }

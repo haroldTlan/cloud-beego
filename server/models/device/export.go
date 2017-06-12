@@ -195,8 +195,9 @@ func volExport(export string, expands []string, l int) (err error) {
 		return
 	}
 
-	err = zoofsInsert(export, expands)
-	if err != nil {
+	//wait for rozofs init success
+	time.Sleep(2 * time.Second)
+	if err = zoofsInsert(export, expands); err != nil {
 		util.AddLog(err)
 		return
 	}
